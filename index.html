@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SkillEd CRM — Уроки</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand__logo">Skill<span>Ed</span></div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav__item active" href="index.html"><span class="nav__icon">👤</span> Мій профіль</a>
+        <a class="nav__item" href="index.html"><span class="nav__icon">🗓️</span> Урок</a>
+        <a class="nav__item" href="#"><span class="nav__icon">📋</span> Завдання</a>
+        <a class="nav__item" href="#"><span class="nav__icon">💬</span> Внутрішній чат</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <!-- Topbar -->
+      <header class="topbar">
+        <button class="icon-btn" aria-label="Меню">☰</button>
+
+        <div class="search">
+          <span class="search__icon">🔎</span>
+          <input id="searchInput" class="search__input" placeholder="Пошук клієнта / предмета / викладача" />
+        </div>
+
+        <div class="topbar__right">
+          <div class="user-pill">
+            <span class="user-pill__name">Платонова</span>
+            <span class="user-pill__avatar">🙂</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Toolbar -->
+      <section class="toolbar">
+        <div class="toolbar__left">
+        <div class="view-icons">
+  <button id="viewMonthBtn" class="icon-btn" aria-label="Місяць">📅</button>
+  <button id="viewWeekBtn" class="icon-btn" aria-label="Тиждень">≡</button>
+</div>
+
+<div class="nav-arrows">
+  <button id="prevBtn" class="icon-btn" aria-label="Назад">‹</button>
+  <button id="nextBtn" class="icon-btn" aria-label="Вперед">›</button>
+</div>
+
+          <button id="todayBtn" class="btn btn-ghost">Сьогодні</button>
+
+          <div class="title">
+            <div id="titleBig" class="title__big">ЛЮТИЙ 2026</div>
+            <div id="titleSub" class="title__sub">—</div>
+          </div>
+        </div>
+
+        <div class="toolbar__right" style="display:flex; gap:10px; align-items:center;">
+          <select id="subjectFilter" class="btn" style="padding:10px 12px;">
+            <option value="">Усі предмети</option>
+          </select>
+
+          <select id="teacherFilter" class="btn" style="padding:10px 12px;">
+            <option value="">Усі викладачі</option>
+          </select>
+
+          <select id="roleSelect" class="btn" style="padding:10px 12px;">
+            <option value="teacher">Роль: Вчитель</option>
+            <option value="student">Роль: Учень</option>
+          </select>
+
+          <input id="studentNameInput" class="btn" style="display:none; width:220px;" placeholder="Ім'я учня (для ролі Учень)" />
+
+          <button id="addLessonBtn" class="btn btn-primary">➕ Урок</button>
+        </div>
+      </section>
+
+      <section class="content">
+
+        <!-- Tabs radio -->
+        <input class="tab-radio" type="radio" name="calview" id="tab-month">
+        <input class="tab-radio" type="radio" name="calview" id="tab-week">
+        <input class="tab-radio" type="radio" name="calview" id="tab-day" checked>
+
+        <div class="tabs">
+          <label class="tab" for="tab-month">Місяць</label>
+          <label class="tab" for="tab-week">Тиждень</label>
+          <label class="tab" for="tab-day">День</label>
+        </div>
+
+        <!-- MONTH (простий статичний, але теж можна оживити далі) -->
+        <section class="panel panel--month">
+          <div class="card" style="padding:14px 16px;">
+            <div style="font-weight:900; margin-bottom:6px;">Місяць</div>
+            <div class="muted">Поки що демо. Основна магія — у «День» (drag&drop + CRUD).</div>
+          </div>
+        </section>
+
+        <!-- WEEK (простий статичний) -->
+        <section class="panel panel--week">
+          <div class="card" style="padding:14px 16px;">
+            <div style="font-weight:900; margin-bottom:6px;">Тиждень</div>
+            <div class="muted">Поки що демо. Можна доробити автолейаут як у Day.</div>
+          </div>
+        </section>
+
+        <!-- DAY (живий) -->
+        <section class="panel panel--day">
+          <div class="day">
+            <div class="day__head">
+              <div id="dayTitle" class="day__title">—</div>
+              <div id="daySubtitle" class="day__subtitle">—</div>
+            </div>
+
+            <div class="day__grid" id="dayGrid">
+              <div class="day__timecol" id="timeCol"></div>
+
+              <!-- Drop lane -->
+              <div class="day__lane" id="dayLane" aria-label="Розклад дня">
+                <!-- JS тут малює уроки -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal (JS керує відкриттям/закриттям) -->
+  <div class="modal-js" id="lessonModal" aria-hidden="true">
+    <div class="modal-js__backdrop" data-close="1"></div>
+    <div class="modal-js__card" role="dialog" aria-modal="true" aria-label="Урок">
+      <div class="modal-js__head">
+        <div class="modal-js__title" id="modalTitle">Урок</div>
+        <button class="icon-btn" data-close="1" aria-label="Закрити">✕</button>
+      </div>
+
+      <div class="modal-js__body">
+        <div class="form-grid">
+         <div class="field field--full">
+  <div style="display:flex; align-items:center; justify-content:space-between;">
+    <span style="color:var(--muted); font-weight:800; font-size:12.5px;">Учні</span>
+
+    <div style="display:flex; gap:10px; align-items:center;">
+      <label style="display:flex; gap:8px; align-items:center; font-weight:800; color:var(--muted); font-size:12.5px;">
+        <input id="fIsGroup" type="checkbox" />
+        Група
+      </label>
+      <button id="addStudentBtn" type="button" class="btn btn-ghost btn-sm">+ Додати учня</button>
+    </div>
+  </div>
+
+  <div id="studentsWrap" class="students-wrap">
+    <!-- JS додасть інпути -->
+  </div>
+</div>
+
+          <label class="field">
+            <span>Початок</span>
+            <input id="fStart" type="time" step="300" />
+          </label>
+
+          <label class="field">
+            <span>Тривалість (хв)</span>
+            <input id="fDur" type="number" min="10" max="240" value="50" />
+          </label>
+
+          <label class="field">
+            <span>Предмет</span>
+            <input id="fSubject" placeholder="Напр. Основи ШІ" />
+          </label>
+
+          <label class="field">
+            <span>Учень</span>
+            <input id="fStudent" placeholder="ПІБ учня" />
+          </label>
+
+          <label class="field">
+            <span>Викладач</span>
+            <input id="fTeacher" placeholder="ПІБ викладача" />
+          </label>
+
+          <label class="field">
+            <span>Тип</span>
+            <select id="fType">
+              <option value="Індивідуальний">Індивідуальний</option>
+              <option value="Груповий">Груповий</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Статус</span>
+            <select id="fStatus">
+              <option value="planned">Заплановано</option>
+              <option value="done">Проведено та оплачено</option>
+              <option value="debt">Проведено в борг</option>
+              <option value="missed">Пропуск</option>
+              <option value="free">Безкоштовний</option>
+            </select>
+          </label>
+
+          <label class="field field--full">
+            <span>Нотатка</span>
+            <input id="fNote" placeholder="Що важливо пам'ятати про урок (опційно)" />
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-js__foot">
+        <button id="saveBtn" class="btn btn-primary">💾 Зберегти</button>
+        <button id="deleteBtn" class="btn btn-ghost" style="border-color:#fecaca; color:#b91c1c;">🗑 Видалити</button>
+        <div style="margin-left:auto" class="muted" id="dragHint">Порада: перетягни урок у таймлайн, щоб змінити час 😉</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
