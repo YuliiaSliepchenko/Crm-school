@@ -19,6 +19,7 @@
 
   const STATUS_META = {
     planned: { label: "Заплановано", className: "" },
+    cancelled: { label: "Скасований", className: "event--warn" },
     done: { label: "Проведено та оплачено", className: "event--accent" },
     debt: { label: "Проведено в борг", className: "event--warn" },
     missed: { label: "Пропуск", className: "event--warn" },
@@ -32,13 +33,16 @@
 
   let currentDayISO = isoToday();
   let ui = {
-    search: "",
-    subject: "",
-    teacher: "",
-    role: "teacher",     // teacher | student
-    studentName: "",
-    view: "day",         // month | week | day
-  };
+  search: "",
+  subject: "",
+  teacher: "",
+  role: "teacher",
+  studentName: "",
+  view: "day",        // month | week | day
+  mode: "calendar",   // calendar | list
+  listStatus: "planned", // planned | done | cancelled
+};
+
 
   // ---------------- DOM references ----------------
   const searchInput = $("#searchInput");
@@ -46,6 +50,9 @@
   const teacherFilter = $("#teacherFilter");
   const roleSelect = $("#roleSelect");
   const studentNameInput = $("#studentNameInput");
+  const sidebar = $("#sidebar");
+  const burgerBtn = $("#burgerBtn");
+
 
   const addLessonBtn = $("#addLessonBtn");
   const todayBtn = $("#todayBtn");
@@ -53,8 +60,8 @@
   const prevBtn = $("#prevBtn");
   const nextBtn = $("#nextBtn");
 
-  const viewMonthBtn = $("#viewMonthBtn");
-  const viewWeekBtn = $("#viewWeekBtn");
+  const viewCalBtn = $("#viewCalBtn");
+  const viewListBtn = $("#viewListBtn");
 
   const tabMonth = $("#tab-month");
   const tabWeek = $("#tab-week");
@@ -67,6 +74,16 @@
 
   const timeCol = $("#timeCol");
   const dayLane = $("#dayLane");
+
+  const monthGrid = $("#monthGrid");
+  const weekTimeCol = $("#weekTimeCol");
+  const weekDays = $("#weekDays");
+
+  const listTable = $("#listTable");
+  const statusTabs = document.querySelectorAll(".status-tab");
+
+  const sidebarToggle = $("#sidebarToggle");
+  const appRoot = document.querySelector(".app");
 
   const modal = $("#lessonModal");
   const modalTitle = $("#modalTitle");
@@ -89,27 +106,37 @@
 
   // ---------------- Utils ----------------
   function isoToday() {
-    const d = new Date();
-    d.setHours(0,0,0,0);
-    return d.toISOString().slice(0,10);
-  }
+  const d = new Date();                 // локальний час
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;            // локальний ISO
+}
 
   function parseISODate(iso) {
     const [y,m,dd] = iso.split("-").map(Number);
     return new Date(y, m-1, dd);
   }
 
+  function toLocalISO(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
   function addDays(iso, delta) {
     const d = parseISODate(iso);
     d.setDate(d.getDate() + delta);
-    return d.toISOString().slice(0,10);
-  }
+    return toLocalISO(d);
+}
 
   function addMonths(iso, delta) {
     const d = parseISODate(iso);
     d.setMonth(d.getMonth() + delta);
-    return d.toISOString().slice(0,10);
-  }
+    return toLocalISO(d);
+}
+
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
@@ -329,6 +356,7 @@
         studentNameInput.value = "";
       }
     }
+  // якщо list mode — показуємо panel--list (нижче буде логіка в setViewMode)
 
     // set active tab by ui.view
     if (ui.view === "month" && tabMonth) tabMonth.checked = true;
@@ -379,13 +407,288 @@
     }
   }
 
-  function rerenderAll() {
-    renderTitles();
-    renderFiltersOptions();
-    applyUIToControls();
-    renderTimeCol();
-    renderDay();
+  function renderMonth(){
+  if (!monthGrid) return;
+  monthGrid.innerHTML = "";
+
+  const d = parseISODate(currentDayISO);
+  const year = d.getFullYear();
+  const month = d.getMonth();
+
+  // head (пн..нд)
+  const heads = ["пн","вт","ср","чт","пт","сб","нд"];
+  for (const h of heads){
+    const hd = document.createElement("div");
+    hd.className = "month-grid__head";
+    hd.textContent = h;
+    monthGrid.appendChild(hd);
   }
+
+  // перший день місяця
+  const first = new Date(year, month, 1);
+  // JS: 0=нд..6=сб -> робимо 0=пн..6=нд
+  const firstDow = (first.getDay() + 6) % 7;
+
+  // скільки днів у місяці
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  // починаємо з дати, яка попадає в першу клітинку календаря
+  const startDate = new Date(year, month, 1 - firstDow);
+
+  // 6 тижнів * 7 днів = 42 клітинки
+  for (let i=0; i<42; i++){
+    const cellDate = new Date(startDate);
+    cellDate.setDate(startDate.getDate() + i);
+    const iso = toLocalISO(cellDate);
+
+    const cell = document.createElement("div");
+    cell.className = "day-cell" + (cellDate.getMonth() !== month ? " is-muted" : "");
+
+    const top = document.createElement("div");
+    top.className = "day-cell__top";
+
+    const num = document.createElement("div");
+    num.className = "day-cell__num";
+    num.textContent = cellDate.getDate();
+
+    top.appendChild(num);
+    cell.appendChild(top);
+
+    const dayLessons = lessons
+      .filter(l => l.date === iso)
+      .filter(matchesFilters)
+      .sort((a,b)=>hhmmToMin(a.start)-hhmmToMin(b.start));
+
+    if (dayLessons.length === 0){
+      const empty = document.createElement("div");
+      empty.className = "day-cell__empty";
+      empty.textContent = "";
+      cell.appendChild(empty);
+    } else {
+      const show = dayLessons.slice(0,3);
+      for (const l of show){
+        const ev = document.createElement("div");
+        ev.className = `event ${eventClass(l.status)}`.trim();
+        ev.style.position = "relative";
+        ev.style.left = "0";
+        ev.style.right = "0";
+        ev.innerHTML = `
+          <div class="event__time">${l.start}</div>
+          <div class="event__title">${l.subject}</div>
+          <div class="event__meta">${metaLine(l)}</div>
+        `;
+        on(ev, "click", () => openModalFor(l.id));
+        cell.appendChild(ev);
+      }
+
+      if (dayLessons.length > 3){
+        const more = document.createElement("div");
+        more.className = "day-cell__more";
+        more.textContent = `+${dayLessons.length - 3} (показати день)`;
+        on(more, "click", () => {
+          ui.view = "day";
+          ui.mode = "calendar";
+          currentDayISO = iso;
+          saveStorage();
+          rerenderAll();
+        });
+        cell.appendChild(more);
+      }
+    }
+
+    // клік по клітинці -> відкриваємо день
+    on(cell, "dblclick", () => {
+      ui.view = "day";
+      ui.mode = "calendar";
+      currentDayISO = iso;
+      saveStorage();
+      rerenderAll();
+    });
+
+    monthGrid.appendChild(cell);
+  }
+}
+
+function renderWeekTime(){
+  if (!weekTimeCol) return;
+  weekTimeCol.innerHTML = "";
+  // такий самий таймлайн як day, тільки week css
+  for (let m = DAY_START; m <= DAY_END; m += SLOT) {
+    const div = document.createElement("div");
+    div.className = "week__time";
+    div.textContent = minToHHMM(m);
+    weekTimeCol.appendChild(div);
+  }
+}
+
+function startOfWeekISO(iso){
+  const d = parseISODate(iso);
+  const dow = (d.getDay() + 6) % 7; // 0=пн
+  d.setDate(d.getDate() - dow);
+  return toLocalISO(d);
+}
+
+function renderWeek(){
+  if (!weekDays) return;
+  weekDays.innerHTML = "";
+  renderWeekTime();
+
+  const startISO = startOfWeekISO(currentDayISO);
+  const start = parseISODate(startISO);
+
+  for (let i=0; i<7; i++){
+    const dayDate = new Date(start);
+    dayDate.setDate(start.getDate() + i);
+    const iso = toLocalISO(dayDate);
+
+    const col = document.createElement("div");
+    col.className = "week__day";
+
+    const head = document.createElement("div");
+    head.className = "week__dayhead";
+    head.textContent = `${String(dayDate.getDate()).padStart(2,"0")}.${String(dayDate.getMonth()+1).padStart(2,"0")}`;
+    col.appendChild(head);
+
+    const dayLessons = lessons
+      .filter(l => l.date === iso)
+      .filter(matchesFilters)
+      .sort((a,b)=>hhmmToMin(a.start)-hhmmToMin(b.start));
+
+    for (const l of dayLessons){
+      const startMin = hhmmToMin(l.start);
+      const top = calcTopPx(startMin);
+      const height = calcHeightPx(l.dur);
+
+      const el = document.createElement("div");
+      el.className = `event event--block ${eventClass(l.status)}`.trim();
+      el.style.top = `${top}px`;
+      el.style.height = `${height}px`;
+      el.style.left = "8px";
+      el.style.right = "8px";
+      el.dataset.id = l.id;
+
+      el.innerHTML = `
+        <div class="event__time">${l.start}</div>
+        <div class="event__title">${l.subject}</div>
+        <div class="event__meta">${metaLine(l)}</div>
+      `;
+      on(el, "click", () => openModalFor(l.id));
+      col.appendChild(el);
+    }
+
+    // dblclick -> перейти в day цього дня
+    on(col, "dblclick", () => {
+      ui.view = "day";
+      ui.mode = "calendar";
+      currentDayISO = iso;
+      saveStorage();
+      rerenderAll();
+    });
+
+    weekDays.appendChild(col);
+  }
+}
+
+function statusToLabelKey(status){
+  // щоб у списку можна було мати "Скасований"
+  if (status === "cancelled") return "cancelled";
+  if (status === "done") return "done";
+  return "planned";
+}
+
+function renderList(){
+  if (!listTable) return;
+  listTable.innerHTML = "";
+
+  // шапка
+  const header = document.createElement("div");
+  header.className = "list-row list-h";
+  header.innerHTML = `<div>Дата/час</div><div>Учень/тема</div><div>Предмет</div>`;
+  listTable.appendChild(header);
+
+  // збираємо уроки за період (day/week/month)
+  const v = ui.view;
+  let fromISO = currentDayISO;
+  let toISO = currentDayISO;
+
+  if (v === "week"){
+    fromISO = startOfWeekISO(currentDayISO);
+    const fromD = parseISODate(fromISO);
+    const toD = new Date(fromD); toD.setDate(fromD.getDate()+6);
+    toISO = toLocalISO(toD);
+  } else if (v === "month"){
+    const d = parseISODate(currentDayISO);
+    const y = d.getFullYear(), m = d.getMonth();
+    fromISO = toLocalISO(new Date(y,m,1));
+    toISO = toLocalISO(new Date(y,m+1,0));
+  }
+
+  const fromD = parseISODate(fromISO);
+  const toD = parseISODate(toISO);
+
+  const list = lessons
+    .filter(matchesFilters)
+    .filter(l => {
+      const ld = parseISODate(l.date);
+      return ld >= fromD && ld <= toD;
+    })
+    .filter(l => statusToLabelKey(l.status) === ui.listStatus)
+    .sort((a,b)=>{
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return hhmmToMin(a.start) - hhmmToMin(b.start);
+    });
+
+  if (list.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "week__empty";
+    empty.textContent = "Нічого не знайдено в цьому періоді 🙂";
+    listTable.appendChild(empty);
+    return;
+  }
+
+  for (const l of list){
+    const row = document.createElement("div");
+    row.className = "list-row";
+    const students = (l.students || []);
+    const sLine = students.length ? students.join(", ") : "—";
+
+    row.innerHTML = `
+      <div><b>${l.date}</b><div class="muted">${l.start} • ${l.dur} хв</div></div>
+      <div><b>${sLine}</b><div class="muted">${l.teacher}</div></div>
+      <div><b>${l.subject}</b><div class="muted">${l.type}</div></div>
+    `;
+    on(row, "click", () => openModalFor(l.id));
+    listTable.appendChild(row);
+  }
+}
+
+ // Functions render ALL
+  function setActiveIcons(){
+  if (viewCalBtn) viewCalBtn.classList.toggle("is-active", ui.mode === "calendar");
+  if (viewListBtn) viewListBtn.classList.toggle("is-active", ui.mode === "list");
+}
+
+function rerenderAll() {
+  renderTitles();
+  renderFiltersOptions();
+  applyUIToControls();
+  setActiveIcons();
+
+  // календарні види
+  if (ui.mode === "calendar"){
+    renderTimeCol();
+
+    if (ui.view === "day") renderDay();
+    if (ui.view === "week") renderWeek();
+    if (ui.view === "month") renderMonth();
+  }
+
+  // список
+  if (ui.mode === "list"){
+    renderList();
+  }
+}
+
 
   // ---------------- Modal: multi-students ----------------
   function showModal(show) {
@@ -591,6 +894,32 @@
     saveStorage();
   }
 
+  function setMode(m){
+  ui.mode = m; // calendar | list
+
+  // показ панелей через radio: використовуємо існуючі таби для period
+  // а list panel покажемо окремо: через клас на body/app не треба — зробимо через CSS+JS простіше:
+  const listPanel = document.querySelector(".panel--list");
+  const monthPanel = document.querySelector(".panel--month");
+  const weekPanel = document.querySelector(".panel--week");
+  const dayPanel = document.querySelector(".panel--day");
+
+  if (m === "list"){
+    if (listPanel) listPanel.style.display = "block";
+    if (monthPanel) monthPanel.style.display = "none";
+    if (weekPanel) weekPanel.style.display = "none";
+    if (dayPanel) dayPanel.style.display = "none";
+  } else {
+    if (listPanel) listPanel.style.display = "none";
+    // повертаємо керування radio tabs:
+    if (monthPanel) monthPanel.style.display = "";
+    if (weekPanel) weekPanel.style.display = "";
+    if (dayPanel) dayPanel.style.display = "";
+  }
+
+  saveStorage();
+}
+
   function getActiveView() {
     if (tabMonth?.checked) return "month";
     if (tabWeek?.checked) return "week";
@@ -609,7 +938,14 @@
 
   // ---------------- Wire events ----------------
   function wireEvents() {
+    on(sidebarToggle, "click", () => {
+    if (!appRoot) return;
+      appRoot.classList.toggle("sidebar-collapsed");
+    });
     on(addLessonBtn, "click", openModalNew);
+    on(burgerBtn, "click", () => {
+    sidebar?.classList.toggle("is-hidden");
+    });
     on(todayBtn, "click", () => {
       currentDayISO = isoToday();
       saveStorage();
@@ -620,8 +956,19 @@
     on(nextBtn, "click", () => navDelta(+1));
 
     // view icons
-    on(viewMonthBtn, "click", () => { setView("month"); rerenderAll(); });
-    on(viewWeekBtn, "click", () => { setView("week"); rerenderAll(); });
+      on(viewCalBtn, "click", () => {
+      setMode("calendar");
+      ui.mode = "calendar";
+      saveStorage();
+      rerenderAll();
+    });
+
+    on(viewListBtn, "click", () => {
+      setMode("list");
+      ui.mode = "list";
+      saveStorage();
+      rerenderAll();
+    });
 
     // tabs clicks (labels are handled by HTML, but we sync ui.view)
     on(tabMonth, "change", () => { if (tabMonth.checked) setView("month"); });
@@ -683,6 +1030,16 @@
       renderDay();
     });
 
+    statusTabs.forEach(btn => {
+  on(btn, "click", () => {
+    statusTabs.forEach(b => b.classList.remove("is-active"));
+    btn.classList.add("is-active");
+    ui.listStatus = btn.dataset.status || "planned";
+    saveStorage();
+    renderList();
+  });
+});
+
     // drag-drop lane
     on(dayLane, "dragover", onLaneDragOver);
     on(dayLane, "drop", onLaneDrop);
@@ -692,6 +1049,11 @@
   function init() {
     loadStorage();
     wireEvents();
+
+    // активна вкладка списку
+    statusTabs.forEach(b => b.classList.toggle("is-active", (b.dataset.status || "planned") === (ui.listStatus || "planned")));
+
+    setMode(ui.mode || "calendar");
     rerenderAll();
   }
 

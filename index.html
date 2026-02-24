@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SkillEd CRM — Уроки</title>
+  <title>ItEnAi CRM — Уроки</title>
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
 <body>
 
   <div class="app">
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <div class="brand__logo">Skill<span>Ed</span></div>
+        <div class="brand__logo">ItEnAi<span>CRM</span></div>
       </div>
 
       <nav class="nav">
@@ -26,7 +26,7 @@
     <main class="main">
       <!-- Topbar -->
       <header class="topbar">
-        <button class="icon-btn" aria-label="Меню">☰</button>
+        <button id="sidebarToggle" class="icon-btn" aria-label="Меню">☰</button>
 
         <div class="search">
           <span class="search__icon">🔎</span>
@@ -45,8 +45,8 @@
       <section class="toolbar">
         <div class="toolbar__left">
         <div class="view-icons">
-  <button id="viewMonthBtn" class="icon-btn" aria-label="Місяць">📅</button>
-  <button id="viewWeekBtn" class="icon-btn" aria-label="Тиждень">≡</button>
+  <button id="viewCalBtn" class="icon-btn" aria-label="Календар">📅</button>
+  <button id="viewListBtn" class="icon-btn" aria-label="Список">≡</button>
 </div>
 
 <div class="nav-arrows">
@@ -97,19 +97,32 @@
 
         <!-- MONTH (простий статичний, але теж можна оживити далі) -->
         <section class="panel panel--month">
-          <div class="card" style="padding:14px 16px;">
-            <div style="font-weight:900; margin-bottom:6px;">Місяць</div>
-            <div class="muted">Поки що демо. Основна магія — у «День» (drag&drop + CRUD).</div>
-          </div>
+          <div class="month-grid" id="monthGrid"></div>
         </section>
 
         <!-- WEEK (простий статичний) -->
         <section class="panel panel--week">
-          <div class="card" style="padding:14px 16px;">
-            <div style="font-weight:900; margin-bottom:6px;">Тиждень</div>
-            <div class="muted">Поки що демо. Можна доробити автолейаут як у Day.</div>
+          <div class="week" id="weekWrap">
+            <div class="week__grid">
+              <div class="week__timecol" id="weekTimeCol"></div>
+              <div class="week__days" id="weekDays"></div>
+            </div>
           </div>
         </section>
+
+        <section class="panel panel--list">
+          <div class="card" style="padding:12px 14px;">
+            <div class="status-tabs">
+              <button class="status-tab" data-status="done">Проведений</button>
+              <button class="status-tab" data-status="cancelled">Скасований</button>
+              <button class="status-tab" data-status="planned">Запланований</button>
+            </div>
+
+            <div class="list-table" id="listTable"></div>
+          </div>
+        </section>
+
+
 
         <!-- DAY (живий) -->
         <section class="panel panel--day">
@@ -164,6 +177,11 @@
 </div>
 
           <label class="field">
+            <span>Дата</span>
+            <input id="fDate" type="date" />
+          </label>
+
+          <label class="field">
             <span>Початок</span>
             <input id="fStart" type="time" step="300" />
           </label>
@@ -200,6 +218,7 @@
             <span>Статус</span>
             <select id="fStatus">
               <option value="planned">Заплановано</option>
+              <option value="cancelled">Скасований</option>
               <option value="done">Проведено та оплачено</option>
               <option value="debt">Проведено в борг</option>
               <option value="missed">Пропуск</option>
