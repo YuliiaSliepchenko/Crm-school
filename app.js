@@ -10,6 +10,7 @@
   // ---------------- Constants ----------------
   const STORAGE_KEY = "skilled_crm_lessons_v2";
   const UI_KEY = "skilled_crm_ui_v2";
+  const CHAT_KEY = "skilled_crm_chat_v1";
 
   const DAY_START = 7 * 60;   // 07:00
   const DAY_END = 21 * 60;    // 21:00
@@ -42,6 +43,19 @@
   mode: "calendar",   // calendar | list
   listStatus: "planned", // planned | done | cancelled
 };
+let chats = {};      // { threadId: {id, title, members:[...], messages:[{ts, from, text}]} }
+let activeChatId = null;
+
+// демо "ви" як викладач (потім зробимо логін)
+const ME = { id: "teacher_platonova", name: "Платонова Юлія" };
+
+// демо список вчителів (ти потім відредагуєш)
+const TEACHERS = [
+  { id:"teacher_platonova", name:"Платонова Юлія" },
+  { id:"teacher_ivan", name:"Соболєв Тарас" },
+  { id:"teacher_olena", name:"Коваленко Олена" },
+  { id:"teacher_andrii", name:"Шевченко Андрій" },
+];
 
 
   // ---------------- DOM references ----------------
@@ -85,6 +99,18 @@
   const sidebarToggle = $("#sidebarToggle");
   const appRoot = document.querySelector(".app");
 
+  // top teacher picker
+const teacherTopSelect = $("#teacherTopSelect");
+
+// chat refs
+const newChatBtn = $("#newChatBtn");
+const chatMsgs = $("#chatMsgs");
+const chatTitle = $("#chatTitle");
+const chatSub = $("#chatSub");
+const chatComposer = $("#chatComposer");
+const chatInput = $("#chatInput");
+const chatSendBtn = $("#chatSendBtn");
+
   const modal = $("#lessonModal");
   const modalTitle = $("#modalTitle");
   const saveBtn = $("#saveBtn");
@@ -103,6 +129,11 @@
   const fIsGroup = $("#fIsGroup");
   const addStudentBtn = $("#addStudentBtn");
   const studentsWrap = $("#studentsWrap");
+
+  // pages
+const navLinks = document.querySelectorAll(".nav__item[data-page]");
+const pages = document.querySelectorAll(".page");
+
 
   // ---------------- Utils ----------------
   function isoToday() {
@@ -179,6 +210,7 @@
   function saveStorage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lessons));
     localStorage.setItem(UI_KEY, JSON.stringify({ currentDayISO, ui }));
+    localStorage.setItem(CHAT_KEY, JSON.stringify({ chats, activeChatId }));
   }
 
   function loadStorage() {
@@ -197,7 +229,35 @@
         ui = { ...ui, ...(parsed.ui || {}) };
       }
     } catch {}
+    try{
+  const rawChat = localStorage.getItem(CHAT_KEY);
+  if (rawChat){
+    const parsed = JSON.parse(rawChat);
+    chats = parsed.chats || {};
+    activeChatId = parsed.activeChatId || null;
+  } else {
+    chats = {};
+    activeChatId = null;
   }
+} catch {
+  chats = {};
+  activeChatId = null;
+}
+  }
+
+  function renderTopTeacherSelect(){
+  if (!teacherTopSelect) return;
+
+  teacherTopSelect.innerHTML = `<option value="">Усі викладачі</option>`;
+  for (const t of TEACHERS){
+    const opt = document.createElement("option");
+    opt.value = t.name;
+    opt.textContent = t.name;
+    teacherTopSelect.appendChild(opt);
+  }
+
+  teacherTopSelect.value = ui.teacher || "";
+}
 
   // ---------------- Data model ----------------
   function mkLesson({ date, start, dur, subject, students, teacher, type, status, note }) {
@@ -671,8 +731,10 @@ function renderList(){
 function rerenderAll() {
   renderTitles();
   renderFiltersOptions();
+  renderTopTeacherSelect();
   applyUIToControls();
   setActiveIcons();
+  
 
   // календарні види
   if (ui.mode === "calendar"){
@@ -936,8 +998,27 @@ function rerenderAll() {
     rerenderAll();
   }
 
+  function openPage(pageId) {
+  pages.forEach(p => p.classList.remove("is-active"));
+  const target = document.getElementById(pageId);
+  if (target) target.classList.add("is-active");
+
+  // active menu highlight
+  document.querySelectorAll(".nav__item").forEach(a => a.classList.remove("active"));
+  document.querySelectorAll(`.nav__item[data-page="${pageId}"]`).forEach(a => a.classList.add("active"));
+
+  // якщо відкрили уроки — перемальовуємо календар (на всяк)
+  if (pageId === "page-lessons") rerenderAll();
+}
+
   // ---------------- Wire events ----------------
   function wireEvents() {
+    navLinks.forEach(a => {
+  on(a, "click", (e) => {
+    e.preventDefault();
+    openPage(a.dataset.page);
+  });
+});
     on(sidebarToggle, "click", () => {
     if (!appRoot) return;
       appRoot.classList.toggle("sidebar-collapsed");
@@ -955,6 +1036,13 @@ function rerenderAll() {
     on(prevBtn, "click", () => navDelta(-1));
     on(nextBtn, "click", () => navDelta(+1));
 
+    // chat
+on(newChatBtn, "click", openNewChatFlow);
+on(chatSendBtn, "click", sendChatMessage);
+on(chatInput, "keydown", (e) => {
+  if (e.key === "Enter") sendChatMessage();
+});
+
     // view icons
       on(viewCalBtn, "click", () => {
       setMode("calendar");
@@ -969,6 +1057,182 @@ function rerenderAll() {
       saveStorage();
       rerenderAll();
     });
+
+    on(teacherTopSelect, "change", () => {
+  ui.teacher = teacherTopSelect.value;
+  saveStorage();
+  rerenderAll();
+});
+
+function chatThreadTitleByMembers(memberIds){
+  const names = memberIds
+    .map(id => TEACHERS.find(t=>t.id===id)?.name || id)
+    .filter(n => n !== ME.name);
+  return names.length ? names.join(", ") : "Чат";
+}
+
+function ensureDemoChats(){
+  // якщо нема жодного — створимо 1 демо
+  if (Object.keys(chats).length) return;
+
+  const id = "chat_demo";
+  chats[id] = {
+    id,
+    members: [ME.id, "teacher_olena"],
+    title: "Коваленко Олена",
+    messages: [
+      { ts: Date.now()-3600_000, from:"teacher_olena", text:"Привіт! Ти сьогодні вільна на 18:00?" },
+      { ts: Date.now()-3500_000, from:ME.id, text:"Так, можу 🙂" },
+    ]
+  };
+  activeChatId = id;
+}
+
+function renderChatContacts(){
+  const wrap = document.querySelector(".chat__contacts");
+  if (!wrap) return;
+
+  // показуємо тільки чати, де є я
+  const threads = Object.values(chats)
+    .filter(t => t.members.includes(ME.id))
+    .sort((a,b) => (b.messages?.at(-1)?.ts||0) - (a.messages?.at(-1)?.ts||0));
+
+  wrap.innerHTML = "";
+
+  for (const t of threads){
+    const btn = document.createElement("button");
+    btn.className = "chat__contact" + (t.id === activeChatId ? " is-active" : "");
+    btn.type = "button";
+
+    btn.innerHTML = `
+      <div class="chat__ava">🙂</div>
+      <div>
+        <div class="chat__name">${t.title || "Чат"}</div>
+        <div class="chat__hint muted">${t.id === activeChatId ? "Відкрито" : "Натисніть, щоб відкрити"}</div>
+      </div>
+    `;
+
+    on(btn, "click", () => {
+      activeChatId = t.id;
+      saveStorage();
+      renderChatContacts();
+      renderChatRoom();
+    });
+
+    wrap.appendChild(btn);
+  }
+
+  // якщо нема чатів
+  if (!threads.length){
+    const empty = document.createElement("div");
+    empty.className = "muted";
+    empty.style.padding = "10px 12px";
+    empty.textContent = "Чатів поки нема. Натисни “+ Новий чат”.";
+    wrap.appendChild(empty);
+  }
+}
+
+function renderChatRoom(){
+  if (!chatMsgs) return;
+
+  const t = chats[activeChatId];
+
+  if (!t){
+    chatMsgs.innerHTML = `<div class="chat__empty muted">Оберіть чат зліва або створіть новий 🙂</div>`;
+    if (chatComposer) chatComposer.style.display = "none";
+    if (chatTitle) chatTitle.textContent = "Чат";
+    if (chatSub) chatSub.textContent = "—";
+    return;
+  }
+
+  if (chatComposer) chatComposer.style.display = "flex";
+  if (chatTitle) chatTitle.textContent = t.title || "Чат";
+  if (chatSub) chatSub.textContent = "Викладачі";
+
+  chatMsgs.innerHTML = "";
+
+  for (const m of (t.messages || [])){
+    const div = document.createElement("div");
+    const isMe = m.from === ME.id;
+    div.className = "msg" + (isMe ? " msg--me" : "");
+    const fromName = TEACHERS.find(x=>x.id===m.from)?.name || "—";
+    const when = new Date(m.ts).toLocaleString("uk-UA", { hour:"2-digit", minute:"2-digit" });
+
+    div.innerHTML = `
+      <div>${escapeHtml(m.text)}</div>
+      <div class="msg__meta">${isMe ? "Ви" : fromName} • ${when}</div>
+    `;
+    chatMsgs.appendChild(div);
+  }
+
+  chatMsgs.scrollTop = chatMsgs.scrollHeight;
+}
+
+function escapeHtml(s){
+  return String(s||"")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function createChatWith(teacherId){
+  const members = [ME.id, teacherId].sort();
+  // не створювати дублікати
+  const existing = Object.values(chats).find(t => {
+    const ms = (t.members||[]).slice().sort();
+    return JSON.stringify(ms) === JSON.stringify(members);
+  });
+  if (existing){
+    activeChatId = existing.id;
+    return;
+  }
+
+  const id = "chat_" + uid();
+  chats[id] = {
+    id,
+    members,
+    title: chatThreadTitleByMembers(members),
+    messages: [
+      { ts: Date.now(), from: ME.id, text: "Привіт! 👋" }
+    ]
+  };
+  activeChatId = id;
+}
+
+function openNewChatFlow(){
+  // простий prompt-варіант (без модалок, щоб не ламати)
+  const options = TEACHERS.filter(t=>t.id!==ME.id).map(t=>t.name).join("\n");
+  const picked = prompt("З ким створити чат? Введіть ім’я як у списку:\n\n" + options);
+  if (!picked) return;
+
+  const t = TEACHERS.find(x => x.name.toLowerCase() === picked.trim().toLowerCase());
+  if (!t) {
+    alert("Не знайшла такого викладача. Спробуй ще раз 🙂");
+    return;
+  }
+
+  createChatWith(t.id);
+  saveStorage();
+  renderChatContacts();
+  renderChatRoom();
+}
+
+function sendChatMessage(){
+  const t = chats[activeChatId];
+  if (!t) return;
+  const text = (chatInput?.value || "").trim();
+  if (!text) return;
+
+  t.messages = t.messages || [];
+  t.messages.push({ ts: Date.now(), from: ME.id, text });
+  if (chatInput) chatInput.value = "";
+
+  saveStorage();
+  renderChatContacts();
+  renderChatRoom();
+}
 
     // tabs clicks (labels are handled by HTML, but we sync ui.view)
     on(tabMonth, "change", () => { if (tabMonth.checked) setView("month"); });
@@ -1000,22 +1264,23 @@ function rerenderAll() {
 
     // filters
     on(searchInput, "input", () => {
-      ui.search = searchInput.value;
-      saveStorage();
-      renderDay();
-    });
+  ui.search = searchInput.value;
+  saveStorage();
+  rerenderAll();
+});
 
     on(subjectFilter, "change", () => {
-      ui.subject = subjectFilter.value;
-      saveStorage();
-      renderDay();
-    });
+  ui.subject = subjectFilter.value;
+  saveStorage();
+  rerenderAll();
+});
 
     on(teacherFilter, "change", () => {
-      ui.teacher = teacherFilter.value;
-      saveStorage();
-      renderDay();
-    });
+  ui.teacher = teacherFilter.value;
+  if (teacherTopSelect) teacherTopSelect.value = ui.teacher || "";
+  saveStorage();
+  rerenderAll();
+});
 
     on(roleSelect, "change", () => {
       ui.role = roleSelect.value;
@@ -1025,10 +1290,10 @@ function rerenderAll() {
     });
 
     on(studentNameInput, "input", () => {
-      ui.studentName = studentNameInput.value;
-      saveStorage();
-      renderDay();
-    });
+  ui.studentName = studentNameInput.value;
+  saveStorage();
+  rerenderAll();
+});
 
     statusTabs.forEach(btn => {
   on(btn, "click", () => {
@@ -1049,6 +1314,9 @@ function rerenderAll() {
   function init() {
     loadStorage();
     wireEvents();
+    ensureDemoChats();
+
+    openPage("page-lessons"); // стартова вкладка
 
     // активна вкладка списку
     statusTabs.forEach(b => b.classList.toggle("is-active", (b.dataset.status || "planned") === (ui.listStatus || "planned")));
