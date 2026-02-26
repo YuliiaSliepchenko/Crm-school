@@ -13,7 +13,7 @@
 
   const DAY_START = 7 * 60;   // 07:00
   const DAY_END = 21 * 60;    // 21:00
-  const SLOT = 30;            // labels each 30 min
+  const SLOT = 60;            // labels each 30 min
   const PX_PER_HOUR = 3.2 * 16; // must match CSS: 3.2rem per hour
   const BASE_TOP_PX = 0.75 * 16;
 
