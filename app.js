@@ -11,6 +11,8 @@
   const STORAGE_KEY = "skilled_crm_lessons_v2";
   const UI_KEY = "skilled_crm_ui_v2";
   const CHAT_KEY = "skilled_crm_chat_v1";
+  const TASKS_KEY = "skilled_crm_tasks_v1";
+  const TASK_KEY = "skilled_crm_tasks_v1";
 
   const DAY_START = 7 * 60;   // 07:00
   const DAY_END = 21 * 60;    // 21:00
@@ -31,6 +33,8 @@
   let lessons = [];
   let selectedId = null;
   let dragId = null;
+  let tasks = [];
+  let currentTeacher = "Платонова Юлія";
 
   let currentDayISO = isoToday();
   let ui = {
@@ -65,7 +69,6 @@ const TEACHERS = [
   const roleSelect = $("#roleSelect");
   const studentNameInput = $("#studentNameInput");
   const sidebar = $("#sidebar");
-  const burgerBtn = $("#burgerBtn");
 
 
   const addLessonBtn = $("#addLessonBtn");
@@ -86,6 +89,11 @@ const TEACHERS = [
   const dayTitle = $("#dayTitle");
   const daySubtitle = $("#daySubtitle");
 
+  // tasks refs
+const tasksList = $("#tasksList");
+const addTaskBtn = $("#addTaskBtn");
+const tasksHint = $("#tasksHint");
+
   const timeCol = $("#timeCol");
   const dayLane = $("#dayLane");
 
@@ -99,8 +107,22 @@ const TEACHERS = [
   const sidebarToggle = $("#sidebarToggle");
   const appRoot = document.querySelector(".app");
 
+  // profile buttons
+const btnDoneRegister = $("#btnDoneRegister");
+const btnSalaryStatement = $("#btnSalaryStatement");
+
+// report modal
+const reportModal = $("#reportModal");
+const reportTitle = $("#reportTitle");
+const reportSummary = $("#reportSummary");
+const reportTable = $("#reportTable");
+
   // top teacher picker
 const teacherTopSelect = $("#teacherTopSelect");
+
+// profile refs
+const profileNameEl = $("#profileName");
+const profileSchoolEl = $("#profileSchool");
 
 // chat refs
 const newChatBtn = $("#newChatBtn");
@@ -208,10 +230,12 @@ const pages = document.querySelectorAll(".page");
 
   // ---------------- Storage ----------------
   function saveStorage() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lessons));
-    localStorage.setItem(UI_KEY, JSON.stringify({ currentDayISO, ui }));
-    localStorage.setItem(CHAT_KEY, JSON.stringify({ chats, activeChatId }));
-  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(lessons));
+  localStorage.setItem(UI_KEY, JSON.stringify({ currentDayISO, ui, currentTeacher }));
+  localStorage.setItem(CHAT_KEY, JSON.stringify({ chats, activeChatId }));
+  localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  localStorage.setItem(TASK_KEY, JSON.stringify(tasks));
+}
 
   function loadStorage() {
     try {
@@ -229,6 +253,31 @@ const pages = document.querySelectorAll(".page");
         ui = { ...ui, ...(parsed.ui || {}) };
       }
     } catch {}
+
+    // tasks
+try {
+  const rawT = localStorage.getItem(TASKS_KEY);
+  tasks = rawT ? JSON.parse(rawT) : seedTasks();
+} catch {
+  tasks = seedTasks();
+}
+
+try{
+  const rawTasks = localStorage.getItem(TASK_KEY);
+  tasks = rawTasks ? JSON.parse(rawTasks) : [];
+} catch {
+  tasks = [];
+}
+
+// currentTeacher (з UI_KEY)
+try {
+  const rawUI = localStorage.getItem(UI_KEY);
+  if (rawUI) {
+    const parsed = JSON.parse(rawUI);
+    currentTeacher = parsed.currentTeacher || currentTeacher;
+  }
+} catch {}
+
     try{
   const rawChat = localStorage.getItem(CHAT_KEY);
   if (rawChat){
@@ -259,6 +308,126 @@ const pages = document.querySelectorAll(".page");
   teacherTopSelect.value = ui.teacher || "";
 }
 
+function taskUid(){
+  return "task_" + uid();
+}
+
+function seedTaskIfEmpty(){
+  if (tasks.length) return;
+  tasks = [
+    { id: taskUid(), teacher: ME.name, title: "Підготувати матеріали до уроку", note:"Слайди + домашка", done:false, ts: Date.now() },
+    { id: taskUid(), teacher: "Соболєв Тарас", title: "Перевірити домашні роботи", note:"Roblox Studio", done:false, ts: Date.now()-7200_000 },
+  ];
+}
+
+function tasksForSelectedTeacher(){
+  const tName = getSelectedTeacherName();
+  return tasks.filter(t => t.teacher === tName);
+}
+
+function renderTasks(){
+  if (!tasksList) return;
+
+  const tName = getSelectedTeacherName();
+  if (tasksHint) tasksHint.textContent = `Викладач: ${tName}`;
+
+  const list = tasksForSelectedTeacher()
+    .slice()
+    .sort((a,b)=> (a.done - b.done) || (b.ts - a.ts));
+
+  tasksList.innerHTML = "";
+
+  if (!list.length){
+    const empty = document.createElement("div");
+    empty.className = "muted";
+    empty.style.padding = "10px 6px";
+    empty.textContent = "Поки завдань нема. Натисни “➕ Додати завдання”.";
+    tasksList.appendChild(empty);
+    return;
+  }
+
+  for (const t of list){
+    const row = document.createElement("div");
+    row.className = "task" + (t.done ? " is-done" : "");
+
+    const when = new Date(t.ts).toLocaleString("uk-UA", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+
+    row.innerHTML = `
+      <div class="task__left">
+        <input type="checkbox" ${t.done ? "checked":""} data-task-check="${t.id}" />
+        <div>
+          <div class="task__title">${escapeHtml(t.title)}</div>
+          <div class="task__meta">${escapeHtml(t.note || "—")} • ${when}</div>
+        </div>
+      </div>
+
+      <div class="task__right">
+        <button class="task__btn task__btn--danger" data-task-del="${t.id}">🗑</button>
+      </div>
+    `;
+
+    tasksList.appendChild(row);
+  }
+
+  // handlers (делегування)
+  tasksList.querySelectorAll("[data-task-check]").forEach(ch => {
+    on(ch, "change", () => {
+      const id = ch.getAttribute("data-task-check");
+      const item = tasks.find(x=>x.id===id);
+      if (!item) return;
+      item.done = ch.checked;
+      saveStorage();
+      renderTasks();
+    });
+  });
+
+  tasksList.querySelectorAll("[data-task-del]").forEach(btn => {
+    on(btn, "click", () => {
+      const id = btn.getAttribute("data-task-del");
+      tasks = tasks.filter(x=>x.id!==id);
+      saveStorage();
+      renderTasks();
+    });
+  });
+}
+
+function addTaskFlow(){
+  const tName = getSelectedTeacherName();
+  const title = prompt(`Нове завдання для: ${tName}\n\nВведи назву завдання:`);
+  if (!title) return;
+
+  const note = prompt("Коментар/деталі (можна пусто):") || "";
+
+  tasks.push({
+    id: taskUid(),
+    teacher: tName,
+    title: title.trim(),
+    note: note.trim(),
+    done: false,
+    ts: Date.now()
+  });
+
+  saveStorage();
+  renderTasks();
+}
+
+function getSelectedTeacherName(){
+  // якщо нічого не вибрано — показуємо "Платонова Юлія" (ME)
+  return ui.teacher || ME.name;
+}
+
+function renderProfileHeader(){
+  if (!profileNameEl) return;
+
+  const tName = getSelectedTeacherName();
+  profileNameEl.textContent = tName;
+
+  // якщо хочеш – можна змінювати підпис під ім’ям (школа/роль)
+  if (profileSchoolEl){
+    profileSchoolEl.textContent = "ItEnAi / ITENAI School";
+  }
+}
+
   // ---------------- Data model ----------------
   function mkLesson({ date, start, dur, subject, students, teacher, type, status, note }) {
     return {
@@ -283,6 +452,13 @@ const pages = document.querySelectorAll(".page");
       mkLesson({ date: t, start: "19:00", dur: 50, subject: "Основи ШІ", students:["Фощан Гліб"], teacher: "Платонова Юлія", type:"Індивідуальний", status:"debt", note:"14 років" }),
     ];
   }
+
+  function seedTasks(){
+  return [
+    { id: uid(), teacher: "Платонова Юлія", text: "Перевірити домашку у групи ШІ", done:false, createdAt: Date.now() },
+    { id: uid(), teacher: "Соболєв Тарас", text: "Підготувати матеріал для Roblox уроку", done:false, createdAt: Date.now() },
+  ];
+}
 
   // ---------------- Filters ----------------
   function matchesFilters(lesson) {
@@ -722,6 +898,129 @@ function renderList(){
   }
 }
 
+function monthLabel(y,m){
+  const months = ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"];
+  return `${months[m]} ${y}`;
+}
+
+function calcMonthStats(y,m, teacher){
+  const from = new Date(y,m,1);
+  const to = new Date(y,m+1,0);
+
+  const list = lessons
+    .filter(l => l.teacher === teacher)
+    .filter(l => {
+      const d = parseISODate(l.date);
+      return d >= from && d <= to;
+    });
+
+  const sumMin = (arr) => arr.reduce((s,l)=>s+(Number(l.dur)||0),0);
+
+  const ind = list.filter(l => (l.type||"") === "Індивідуальний");
+  const grp = list.filter(l => (l.type||"") === "Груповий");
+
+  const done = list.filter(l => l.status === "done" || l.status === "debt");
+  const planned = list.filter(l => l.status === "planned");
+
+  return {
+    totalCount: list.length,
+    totalMin: sumMin(list),
+
+    indCount: ind.length,
+    indMin: sumMin(ind),
+
+    grpCount: grp.length,
+    grpMin: sumMin(grp),
+
+    doneCount: done.length,
+    doneMin: sumMin(done),
+
+    plannedCount: planned.length,
+    plannedMin: sumMin(planned),
+  };
+}
+
+function renderProfile(){
+  const scheduleEl = $("#profileSchedule");
+  const statsEl = $("#profileStats");
+  if (!scheduleEl || !statsEl) return;
+
+  // Розклад на 7 днів (по поточному currentDayISO)
+  scheduleEl.innerHTML = "";
+  const start = parseISODate(isoToday());
+
+  for (let i=0;i<7;i++){
+    const d = new Date(start);
+    d.setDate(start.getDate()+i);
+    const iso = toLocalISO(d);
+
+    const dayLessons = lessons
+      .filter(l => l.date === iso)
+      .filter(l => l.teacher === currentTeacher)
+      .sort((a,b)=>hhmmToMin(a.start)-hhmmToMin(b.start));
+
+    const row = document.createElement("div");
+    row.className = "profile2__dayrow";
+
+    const left = document.createElement("div");
+    left.className = "profile2__day";
+    left.textContent = fmtDayHeader(iso).sub;
+
+    const right = document.createElement("div");
+    right.className = "profile2__lessons";
+
+    if (!dayLessons.length){
+      right.innerHTML = `<div class="muted">—</div>`;
+    } else {
+      for (const l of dayLessons){
+        const st = (l.students||[])[0] || "—";
+        const item = document.createElement("div");
+        item.className = "profile2__lesson";
+        item.innerHTML = `<span class="profile2__time">${l.start}</span> <span>${st}</span> <span class="muted">• ${l.subject}</span>`;
+        right.appendChild(item);
+      }
+    }
+
+    row.appendChild(left);
+    row.appendChild(right);
+    scheduleEl.appendChild(row);
+  }
+
+  // Статистика (поточний + попередній місяць)
+  statsEl.innerHTML = "";
+  const cur = parseISODate(currentDayISO);
+  const curY = cur.getFullYear();
+  const curM = cur.getMonth();
+  const prev = new Date(curY, curM-1, 1);
+
+  const blocks = [
+    { label: monthLabel(curY, curM), y: curY, m: curM },
+    { label: monthLabel(prev.getFullYear(), prev.getMonth()), y: prev.getFullYear(), m: prev.getMonth() },
+  ];
+
+  for (const b of blocks){
+    const data = calcMonthStats(b.y, b.m, currentTeacher);
+
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `<div style="font-weight:950; margin:6px 0 8px;">${b.label}</div>`;
+
+    const items = [
+      ["Індивідуальні", `${data.indCount} шт`, `${data.indMin} хв`],
+      ["Групові", `${data.grpCount} шт`, `${data.grpMin} хв`],
+      ["Разом", `${data.totalCount} шт`, `${data.totalMin} хв`],
+    ];
+
+    for (const [name, a, c] of items){
+      const el = document.createElement("div");
+      el.className = "profile2__stat";
+      el.innerHTML = `<span>${name}</span><span>${a} • ${c}</span>`;
+      wrap.appendChild(el);
+    }
+
+    statsEl.appendChild(wrap);
+  }
+}
+
  // Functions render ALL
   function setActiveIcons(){
   if (viewCalBtn) viewCalBtn.classList.toggle("is-active", ui.mode === "calendar");
@@ -732,6 +1031,7 @@ function rerenderAll() {
   renderTitles();
   renderFiltersOptions();
   renderTopTeacherSelect();
+  renderProfileHeader();
   applyUIToControls();
   setActiveIcons();
   
@@ -751,6 +1051,71 @@ function rerenderAll() {
   }
 }
 
+function showReportModal(show){
+  if (!reportModal) return;
+  reportModal.setAttribute("aria-hidden", show ? "false" : "true");
+  reportModal.classList.toggle("is-open", show);
+}
+
+function renderReportTable(title, list){
+  if (reportTitle) reportTitle.textContent = title;
+  if (!reportTable || !reportSummary) return;
+
+  reportTable.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "report-row report-h";
+  head.innerHTML = `<div>Дата</div><div>Час</div><div>Учні / Тема</div><div>Статус</div>`;
+  reportTable.appendChild(head);
+
+  const totalMin = list.reduce((s,l)=>s+(Number(l.dur)||0),0);
+  reportSummary.textContent = `Викладач: ${currentTeacher} • Записів: ${list.length} • Разом: ${totalMin} хв`;
+
+  if (!list.length){
+    const empty = document.createElement("div");
+    empty.className = "week__empty";
+    empty.textContent = "Поки що немає записів 🙂";
+    reportTable.appendChild(empty);
+  } else {
+    for (const l of list){
+      const row = document.createElement("div");
+      row.className = "report-row";
+      const st = (l.students||[]).join(", ") || "—";
+      row.innerHTML = `
+        <div><b>${l.date}</b></div>
+        <div>${l.start}</div>
+        <div><b>${st}</b><div class="muted">${l.subject} • ${l.dur} хв</div></div>
+        <div><span class="badge">${STATUS_META[l.status]?.label || l.status}</span></div>
+      `;
+      reportTable.appendChild(row);
+    }
+  }
+
+  showReportModal(true);
+}
+
+function openDoneRegister(){
+  const cur = parseISODate(currentDayISO);
+  const y = cur.getFullYear(), m = cur.getMonth();
+  const from = new Date(y,m,1);
+  const to = new Date(y,m+1,0);
+
+  const list = lessons
+    .filter(l => l.teacher === currentTeacher)
+    .filter(l => {
+      const d = parseISODate(l.date);
+      return d >= from && d <= to;
+    })
+    .filter(l => l.status === "done" || l.status === "debt")
+    .sort((a,b)=> (a.date!==b.date ? a.date.localeCompare(b.date) : hhmmToMin(a.start)-hhmmToMin(b.start)));
+
+  renderReportTable("Реєстр проведених уроків", list);
+}
+
+function openSalaryStatement(){
+  // демо як список проведених (потім додамо тариф/розрахунок)
+  openDoneRegister();
+  if (reportTitle) reportTitle.textContent = "Виписка по зарплаті (демо)";
+}
 
   // ---------------- Modal: multi-students ----------------
   function showModal(show) {
@@ -1009,6 +1374,10 @@ function rerenderAll() {
 
   // якщо відкрили уроки — перемальовуємо календар (на всяк)
   if (pageId === "page-lessons") rerenderAll();
+if (pageId === "page-profile") renderProfile();
+if (pageId === "page-tasks") renderTasksPage();
+  if (pageId === "page-tasks") renderTasks();
+  if (pageId === "page-profile") renderProfileHeader();
 }
 
   // ---------------- Wire events ----------------
@@ -1024,15 +1393,13 @@ function rerenderAll() {
       appRoot.classList.toggle("sidebar-collapsed");
     });
     on(addLessonBtn, "click", openModalNew);
-    on(burgerBtn, "click", () => {
-    sidebar?.classList.toggle("is-hidden");
-    });
     on(todayBtn, "click", () => {
       currentDayISO = isoToday();
       saveStorage();
       rerenderAll();
     });
 
+    on(addTaskBtn, "click", addTaskFlow);
     on(prevBtn, "click", () => navDelta(-1));
     on(nextBtn, "click", () => navDelta(+1));
 
@@ -1059,9 +1426,20 @@ on(chatInput, "keydown", (e) => {
     });
 
     on(teacherTopSelect, "change", () => {
-  ui.teacher = teacherTopSelect.value;
+  ui.teacher = teacherTopSelect.value;           // фільтр уроків
+  currentTeacher = ui.teacher || "Платонова Юлія"; // профіль/звіт/задачі
   saveStorage();
   rerenderAll();
+  renderProfile();
+});
+
+// profile reports
+on(btnDoneRegister, "click", openDoneRegister);
+on(btnSalaryStatement, "click", openSalaryStatement);
+
+// close report modal
+on(reportModal, "click", (e) => {
+  if (e.target?.dataset?.close === "1") showReportModal(false);
 });
 
 function chatThreadTitleByMembers(memberIds){
@@ -1175,6 +1553,92 @@ function escapeHtml(s){
     .replaceAll(">","&gt;")
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
+}
+
+function renderTasksPage(){
+  const page = $("#page-tasks");
+  if (!page) return;
+
+  page.innerHTML = `
+    <div class="card" style="padding:14px 16px;">
+      <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:950;">Завдання</div>
+          <div class="muted">Викладач: <b>${currentTeacher}</b></div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <input id="taskInput" class="btn" style="width:340px; font-weight:700;" placeholder="Нове завдання..." />
+          <button id="taskAddBtn" class="btn btn-primary">➕ Додати</button>
+        </div>
+      </div>
+      <div id="tasksList" style="margin-top:12px;"></div>
+    </div>
+  `;
+
+  const taskInput = $("#taskInput");
+  const taskAddBtn = $("#taskAddBtn");
+  const tasksList = $("#tasksList");
+
+  function renderList(){
+    tasksList.innerHTML = "";
+
+    const list = tasks
+      .filter(t => t.teacher === currentTeacher)
+      .sort((a,b)=> (a.done===b.done ? b.createdAt-a.createdAt : (a.done?1:-1)));
+
+    if (!list.length){
+      tasksList.innerHTML = `<div class="muted" style="padding:10px 0;">Поки що завдань немає 🙂</div>`;
+      return;
+    }
+
+    for (const t of list){
+      const row = document.createElement("div");
+      row.className = "list-row";
+      row.style.gridTemplateColumns = "36px 1fr 110px";
+      row.innerHTML = `
+        <div><input type="checkbox" ${t.done?"checked":""} data-id="${t.id}" /></div>
+        <div style="${t.done?"text-decoration:line-through; opacity:.7;":""}"><b>${escapeHtml(t.text)}</b></div>
+        <div style="text-align:right;">
+          <button class="btn btn-ghost btn-sm" data-del="${t.id}" style="border-color:#fecaca;color:#b91c1c;">Видалити</button>
+        </div>
+      `;
+      tasksList.appendChild(row);
+    }
+
+    tasksList.querySelectorAll('input[type="checkbox"][data-id]').forEach(ch => {
+      ch.addEventListener("change", () => {
+        const id = ch.dataset.id;
+        const item = tasks.find(x=>x.id===id);
+        if (!item) return;
+        item.done = ch.checked;
+        saveStorage();
+        renderList();
+      });
+    });
+
+    tasksList.querySelectorAll('button[data-del]').forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.del;
+        tasks = tasks.filter(x=>x.id!==id);
+        saveStorage();
+        renderList();
+      });
+    });
+  }
+
+  function addTask(){
+    const text = (taskInput.value || "").trim();
+    if (!text) return;
+    tasks.push({ id: uid(), teacher: currentTeacher, text, done:false, createdAt: Date.now() });
+    taskInput.value = "";
+    saveStorage();
+    renderList();
+  }
+
+  on(taskAddBtn, "click", addTask);
+  on(taskInput, "keydown", (e)=>{ if (e.key==="Enter") addTask(); });
+
+  renderList();
 }
 
 function createChatWith(teacherId){
@@ -1315,6 +1779,7 @@ function sendChatMessage(){
     loadStorage();
     wireEvents();
     ensureDemoChats();
+    renderProfile();
 
     openPage("page-lessons"); // стартова вкладка
 

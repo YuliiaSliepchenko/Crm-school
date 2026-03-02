@@ -160,15 +160,15 @@
         <div class="profile2__who">
           <div class="profile2__avatar">🙂</div>
           <div>
-            <div class="profile2__name">Платонова Юлія</div>
-            <div class="profile2__sub muted">ItEnAi / SkillEd IT School</div>
+            <div class="profile2__name" id="profileName">Платонова Юлія</div>
+<div class="profile2__sub muted" id="profileSchool">ItEnAi / ITENAI School</div>
           </div>
         </div>
 
         <div class="profile2__actions">
-          <button class="btn btn-primary">Реєстр проведених уроків</button>
-          <button class="btn btn-ghost">Виписка по зарплаті</button>
-        </div>
+  <button id="btnDoneRegister" class="btn btn-primary">Реєстр проведених уроків</button>
+  <button id="btnSalaryStatement" class="btn btn-ghost">Виписка по зарплаті</button>
+</div>
       </div>
 
       <div class="profile2__grid">
@@ -193,11 +193,21 @@
 
   <!-- ===== ЗАВДАННЯ ===== -->
   <section class="page" id="page-tasks">
-    <div class="card" style="padding:14px 16px;">
-      <div style="font-weight:900; margin-bottom:6px;">Завдання</div>
-      <div class="muted">Тут буде список завдань (поки демо).</div>
+  <div class="card" style="padding:14px 16px;">
+    <div class="tasks-head">
+      <div>
+        <div style="font-weight:900;">Завдання</div>
+        <div class="muted" id="tasksHint">—</div>
+      </div>
+
+      <div class="tasks-actions">
+        <button class="btn btn-primary" id="addTaskBtn">➕ Додати завдання</button>
+      </div>
     </div>
-  </section>
+
+    <div class="tasks-list" id="tasksList"></div>
+  </div>
+</section>
 
   <!-- ===== ЧАТ ===== -->
   <section class="page" id="page-chat">
@@ -332,6 +342,26 @@
       </div>
     </div>
   </div>
+
+  <!-- Report modal -->
+<div class="modal-js" id="reportModal" aria-hidden="true">
+  <div class="modal-js__backdrop" data-close="1"></div>
+  <div class="modal-js__card" role="dialog" aria-modal="true" aria-label="Звіт">
+    <div class="modal-js__head">
+      <div class="modal-js__title" id="reportTitle">Звіт</div>
+      <button class="icon-btn" data-close="1" aria-label="Закрити">✕</button>
+    </div>
+
+    <div class="modal-js__body">
+      <div class="muted" id="reportSummary" style="margin-bottom:10px;">—</div>
+      <div id="reportTable"></div>
+    </div>
+
+    <div class="modal-js__foot">
+      <button class="btn btn-ghost" data-close="1">Закрити</button>
+    </div>
+  </div>
+</div>
 
   <script src="app.js"></script>
 </body>
