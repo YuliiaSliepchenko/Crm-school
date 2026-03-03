@@ -24,9 +24,9 @@
     <span class="nav__icon">🗓️</span> Урок
   </button>
 
-  <button class="nav__item" type="button" data-page="page-tasks">
-    <span class="nav__icon">📋</span> Завдання
-  </button>
+  <button class="nav__item" type="button" data-page="page-leads">
+  <span class="nav__icon">🧑‍🎓</span> Учні / Ліди
+</button>
 
   <button class="nav__item" type="button" data-page="page-chat">
     <span class="nav__icon">💬</span> Внутрішній чат
@@ -191,21 +191,77 @@
     </div>
   </section>
 
-  <!-- ===== ЗАВДАННЯ ===== -->
-  <section class="page" id="page-tasks">
-  <div class="card" style="padding:14px 16px;">
-    <div class="tasks-head">
-      <div>
-        <div style="font-weight:900;">Завдання</div>
-        <div class="muted" id="tasksHint">—</div>
+  <!-- ===== УЧЕНЬ (детальна сторінка) ===== -->
+<section class="page" id="page-student">
+  <div class="card" style="padding:14px 16px; margin-bottom:14px;">
+    <button class="btn btn-ghost" id="studentBackBtn">← Повернутися</button>
+  </div>
+
+  <div class="profile2">
+    <div class="profile2__top">
+      <div class="profile2__who">
+        <div class="profile2__avatar">🧑‍🎓</div>
+        <div>
+          <div class="profile2__name" id="studentNameTitle">—</div>
+          <div class="profile2__sub muted">Картка учня • ItEnAi CRM</div>
+        </div>
       </div>
 
-      <div class="tasks-actions">
-        <button class="btn btn-primary" id="addTaskBtn">➕ Додати завдання</button>
+      <div class="profile2__actions">
+        <button class="btn btn-primary" id="studentAddLessonBtn">➕ Додати урок</button>
       </div>
     </div>
 
-    <div class="tasks-list" id="tasksList"></div>
+    <div class="profile2__grid">
+      <div class="card">
+        <div class="card__section">
+          <div class="section-title">Відвідування / найближчі 7 днів</div>
+          <div id="studentSchedule" class="profile2__schedule muted">—</div>
+        </div>
+      </div>
+
+      <div class="card card--side">
+        <div class="card__section">
+          <div class="section-title">Статистика</div>
+          <div id="studentStats" class="profile2__stats muted">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <!-- ===== ЗАВДАННЯ ===== -->
+  <section class="page" id="page-leads">
+  <div class="card" style="padding:14px 16px;">
+    <div class="tasks-head" style="margin-bottom:10px;">
+      <div>
+        <div style="font-weight:900;">Учні / Ліди</div>
+        <div class="muted" id="leadsHint">—</div>
+      </div>
+
+      <div class="tasks-actions">
+        <button class="btn btn-ghost" id="tabLeadsBtn">Ліди</button>
+        <button class="btn btn-primary" id="tabStudentsBtn">Учні</button>
+        <button class="btn btn-primary" id="addLeadBtn">➕ Додати</button>
+      </div>
+    </div>
+
+    <div class="search" style="max-width:520px; margin-bottom:12px;">
+      <span class="search__icon">🔎</span>
+      <input id="leadsSearch" class="search__input" placeholder="Пошук ліда або учня" />
+    </div>
+
+    <div class="leads-grid">
+      <div class="leads-col">
+        <div class="leads-col__title">Ліди</div>
+        <div id="leadsList" class="leads-list"></div>
+      </div>
+
+      <div class="leads-col">
+        <div class="leads-col__title">Учні</div>
+        <div id="studentsList" class="leads-list"></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -360,6 +416,22 @@
     <div class="modal-js__foot">
       <button class="btn btn-ghost" data-close="1">Закрити</button>
     </div>
+  </div>
+</div>
+
+<!-- Student popover card -->
+<div class="student-card" id="studentCard" aria-hidden="true">
+  <div class="student-card__head">
+    <div class="student-card__title" id="scTitle">Учень</div>
+    <button class="icon-btn student-card__close" type="button" id="scCloseBtn" aria-label="Закрити">✕</button>
+  </div>
+
+  <div class="student-card__body" id="scBody"></div>
+
+  <div class="student-card__foot">
+    <button class="btn btn-ghost" type="button" id="scOpenBtn">Відкрити</button>
+    <button class="btn btn-primary" type="button" id="scDoneBtn">Провести</button>
+    <button class="btn btn-ghost" type="button" id="scCancelBtn" style="border-color:#fecaca;color:#b91c1c;">Відмінити</button>
   </div>
 </div>
 

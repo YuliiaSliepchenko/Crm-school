@@ -1072,3 +1072,141 @@ a{ color:inherit; text-decoration:none; }
   border-color:#fecaca;
   color:#b91c1c;
 }
+
+/* ===== Student popover card ===== */
+.student-card{
+  position: fixed;
+  z-index: 999;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  display: none;
+  overflow: hidden;
+  transform-origin: top left;
+}
+.student-card.is-open{
+  display: block;
+  animation: popIn .12s ease-out;
+}
+@keyframes popIn{
+  from{ opacity:0; transform: translateY(6px) scale(.98); }
+  to{ opacity:1; transform: translateY(0) scale(1); }
+}
+.student-card__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 12px;
+  border-bottom:1px solid var(--line);
+}
+.student-card__title{
+  font-weight:950;
+}
+.student-card__body{
+  padding:12px;
+  font-weight:750;
+}
+.student-card__row{
+  display:flex;
+  gap:10px;
+  padding:6px 0;
+}
+.student-card__k{ width:92px; color:var(--muted); font-weight:900; }
+.student-card__v{ flex:1; }
+.student-card__foot{
+  padding:10px 12px;
+  border-top:1px solid var(--line);
+  display:flex;
+  gap:10px;
+}
+.student-link{
+  color:#0eeb33;
+  font-weight:900;
+  cursor:pointer;
+}
+.student-link:hover{ text-decoration: underline; }
+
+/* ===== Leads / Students page ===== */
+.leads-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:14px;
+}
+.leads-col{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+}
+.leads-col__title{
+  padding:10px 12px;
+  font-weight:950;
+  border-bottom:1px solid var(--line);
+  background:#fbfcfe;
+}
+.leads-list{
+  padding:10px 10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-height:120px;
+}
+.lead-item{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+  cursor:pointer;
+}
+.lead-item:hover{ background:#fafafa; }
+.lead-item__top{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+}
+.lead-item__name{ font-weight:950; }
+.lead-item__meta{ margin-top:4px; font-size:12.5px; color:var(--muted); font-weight:700; }
+
+/* ===== Student schedule style like фото 2 ===== */
+.sch7{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.sch7__item{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+}
+.sch7__row1{
+  display:flex;
+  gap:10px;
+  align-items:baseline;
+}
+.sch7__dow{
+  font-weight:950;
+  color:#2563eb;
+  min-width:30px;
+}
+.sch7__time{
+  font-weight:950;
+  color:#0f172a;
+}
+.sch7__sub{
+  margin-top:6px;
+  font-weight:800;
+}
+.sch7__muted{
+  margin-top:4px;
+  color:var(--muted);
+  font-weight:700;
+  font-size:12.5px;
+}
+@media (max-width: 1100px){
+  .leads-grid{ grid-template-columns: 1fr; }
+}
