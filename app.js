@@ -12,8 +12,8 @@
   const UI_KEY = "skilled_crm_ui_v2";
   const CHAT_KEY = "skilled_crm_chat_v1";
   const TASKS_KEY = "skilled_crm_tasks_v1";
-  const TASK_KEY = "skilled_crm_tasks_v1";
   const LEADS_KEY = "skilled_crm_leads_v1";
+  const STUDENTS_KEY = "skilled_crm_students_v1";
 
   const DAY_START = 7 * 60;   // 07:00
   const DAY_END = 21 * 60;    // 21:00
@@ -37,6 +37,8 @@
   let tasks = [];
   let leads = []; // {id,name,phone,source,note,ts}
   let currentTeacher = "Платонова Юлія";
+  let students = []; // {id,name,phone,note,ts}
+  let leadsTab = "leads"; // "leads" | "students"
 
   let currentDayISO = isoToday();
   let ui = {
@@ -181,6 +183,19 @@ const addLeadBtn = $("#addLeadBtn");
 const tabLeadsBtn = $("#tabLeadsBtn");
 const tabStudentsBtn = $("#tabStudentsBtn");
 
+// lead modal refs
+const leadModal = $("#leadModal");
+const leadModalTitle = $("#leadModalTitle");
+const leadName = $("#leadName");
+const leadPhone = $("#leadPhone");
+const leadSource = $("#leadSource");
+const leadNote = $("#leadNote");
+const leadSaveBtn = $("#leadSaveBtn");
+const leadConvertBtn = $("#leadConvertBtn");
+const leadDeleteBtn = $("#leadDeleteBtn");
+
+let selectedLeadId = null;
+
   // pages
 const navLinks = document.querySelectorAll(".nav__item[data-page]");
 const pages = document.querySelectorAll(".page");
@@ -267,8 +282,8 @@ const pages = document.querySelectorAll(".page");
   localStorage.setItem(UI_KEY, JSON.stringify({ currentDayISO, ui, currentTeacher }));
   localStorage.setItem(CHAT_KEY, JSON.stringify({ chats, activeChatId }));
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-  localStorage.setItem(TASK_KEY, JSON.stringify(tasks));
   localStorage.setItem(LEADS_KEY, JSON.stringify(leads));
+  localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
 }
 
   function loadStorage() {
@@ -297,11 +312,9 @@ try {
 }
 
 try{
-  const rawTasks = localStorage.getItem(TASK_KEY);
-  tasks = rawTasks ? JSON.parse(rawTasks) : [];
-} catch {
-  tasks = [];
-}
+  const rawS = localStorage.getItem(STUDENTS_KEY);
+  students = rawS ? JSON.parse(rawS) : [];
+} catch { students = []; }
 
 try{
   const rawL = localStorage.getItem(LEADS_KEY);
@@ -366,6 +379,15 @@ function tasksForSelectedTeacher(){
 
 function uniqueStudents(){
   const set = new Map();
+
+  // students storage
+  for (const s of (students||[])){
+    const name = String(s.name||"").trim();
+    if (!name) continue;
+    if (!set.has(name)) set.set(name, { name });
+  }
+
+  // from lessons
   for (const l of lessons){
     for (const s of (l.students||[])){
       const name = String(s||"").trim();
@@ -373,6 +395,7 @@ function uniqueStudents(){
       if (!set.has(name)) set.set(name, { name });
     }
   }
+
   return Array.from(set.values()).sort((a,b)=>a.name.localeCompare(b.name,"uk"));
 }
 
@@ -400,17 +423,29 @@ function renderLeadsStudentsPage(){
     leadsList.innerHTML = `<div class="muted" style="padding:6px 2px;">Лідів поки немає 🙂</div>`;
   } else {
     for (const l of leadsFiltered){
-      const el = document.createElement("div");
-      el.className = "lead-item";
-      el.innerHTML = `
-        <div class="lead-item__top">
-          <div class="lead-item__name">${escapeHtml(l.name||"—")}</div>
-          <div class="muted" style="font-weight:800;">${escapeHtml(l.phone||"")}</div>
-        </div>
-        <div class="lead-item__meta">${escapeHtml(l.source||"")}${l.note ? " • "+escapeHtml(l.note) : ""}</div>
-      `;
-      leadsList.appendChild(el);
-    }
+  const el = document.createElement("div");
+  el.className = "lead-item";
+  el.innerHTML = `
+    <div class="lead-item__top">
+      <div class="lead-item__name">${escapeHtml(l.name||"—")}</div>
+      <div class="muted" style="font-weight:800;">${escapeHtml(l.phone||"")}</div>
+    </div>
+    <div class="lead-item__meta">${escapeHtml(l.source||"")}${l.note ? " • "+escapeHtml(l.note) : ""}</div>
+  `;
+
+  // ✅ клік по ліду
+  el.addEventListener("click", () => openLeadCard(l.id));
+  el.addEventListener("click", () => openLeadModalEdit(l.id));
+
+  el.addEventListener("click", () => openStudentPage(s.name));
+  el.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  const st = students.find(x => norm(x.name) === norm(s.name));
+  if (st) openPersonModal({ kind:"student", id:st.id });
+});
+
+  leadsList.appendChild(el);
+}
   }
 
   // Students (from lessons)
@@ -431,6 +466,7 @@ function renderLeadsStudentsPage(){
         <div class="lead-item__meta">Натисни, щоб відкрити картку учня</div>
       `;
       el.addEventListener("click", () => openStudentPage(s.name));
+      el.addEventListener("click", () => openPersonModal({ kind:"lead", id:l.id }));
       studentsList.appendChild(el);
     }
   }
@@ -439,13 +475,301 @@ function renderLeadsStudentsPage(){
 function addLeadFlow(){
   const name = prompt("Імʼя ліда:");
   if (!name) return;
-  const phone = prompt("Телефон (опційно):") || "";
-  const source = prompt("Джерело (Instagram/Telegram/сайт…):") || "";
-  const note = prompt("Нотатка (опційно):") || "";
 
-  leads.push({ id:"lead_"+uid(), name:name.trim(), phone:phone.trim(), source:source.trim(), note:note.trim(), ts:Date.now() });
+  const phone = (prompt("Телефон (опційно):") || "").trim();
+  const source = (prompt("Джерело (Instagram/Telegram/сайт…):") || "").trim();
+  const note = (prompt("Нотатка (опційно):") || "").trim();
+
+  const nName = norm(name);
+  const nPhone = norm(phone);
+
+  const exists = (leads || []).some(x => {
+    const samePhone = nPhone && norm(x.phone) === nPhone;
+    const sameNameSource = nName && norm(x.name) === nName && norm(x.source) === norm(source);
+    return samePhone || sameNameSource;
+  });
+
+  if (exists){
+    alert("Такий лід уже є 🙂 (перевір ім’я/телефон)");
+    return;
+  }
+
+  leads.push({
+    id:"lead_"+uid(),
+    name:name.trim(),
+    phone,
+    source,
+    note,
+    ts:Date.now()
+  });
+
   saveStorage();
   renderLeadsStudentsPage();
+}
+
+let personModalEl = null;
+let personModalState = { kind:"lead", id:null }; // kind: lead|student
+
+function ensurePersonModal(){
+  if (personModalEl) return personModalEl;
+
+  const wrap = document.createElement("div");
+  wrap.id = "personModal";
+  wrap.className = "modal";
+  wrap.setAttribute("aria-hidden","true");
+
+  wrap.innerHTML = `
+    <div class="modal__backdrop" data-close="1"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" style="max-width:820px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
+        <div id="pmTitle" style="font-weight:950; font-size:18px;">—</div>
+        <button class="btn btn-ghost btn-sm" data-close="1" aria-label="Close">✕</button>
+      </div>
+
+      <div class="grid" style="gap:10px;">
+        <div>
+          <div class="muted" style="font-weight:800; margin:0 0 6px;">Ім’я</div>
+          <input id="pmName" class="btn" style="width:100%; text-align:left; font-weight:800;" placeholder="Імʼя та прізвище" />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div>
+            <div class="muted" style="font-weight:800; margin:0 0 6px;">Телефон</div>
+            <input id="pmPhone" class="btn" style="width:100%; text-align:left; font-weight:800;" placeholder="+380..." />
+          </div>
+          <div id="pmSourceWrap">
+            <div class="muted" style="font-weight:800; margin:0 0 6px;">Джерело</div>
+            <input id="pmSource" class="btn" style="width:100%; text-align:left; font-weight:800;" placeholder="Instagram/Telegram/сайт..." />
+          </div>
+        </div>
+
+        <div>
+          <div class="muted" style="font-weight:800; margin:0 0 6px;">Нотатка</div>
+          <input id="pmNote" class="btn" style="width:100%; text-align:left; font-weight:800;" placeholder="Коментар..." />
+        </div>
+
+        <div id="pmHint" class="muted" style="margin-top:4px;"></div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; margin-top:6px;">
+          <button id="pmSave" class="btn btn-primary">💾 Зберегти</button>
+          <button id="pmConvert" class="btn btn-ghost" style="border-color:#bfdbfe;">🔁 Перетворити в учня</button>
+          <button id="pmDelete" class="btn btn-ghost btn-sm" style="border-color:#fecaca;color:#b91c1c;">🗑 Видалити</button>
+          <button class="btn btn-ghost btn-sm" data-close="1">Скасувати</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(wrap);
+  personModalEl = wrap;
+
+  // close handlers
+  wrap.addEventListener("click", (e) => {
+    if (e.target?.dataset?.close === "1") showPersonModal(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && personModalEl?.classList.contains("is-open")) showPersonModal(false);
+  });
+
+  // buttons
+  $("#pmSave", wrap).addEventListener("click", savePersonFromModal);
+  $("#pmDelete", wrap).addEventListener("click", deletePersonFromModal);
+  $("#pmConvert", wrap).addEventListener("click", convertLeadToStudentFromModal);
+
+  return personModalEl;
+}
+
+function showPersonModal(show){
+  const m = ensurePersonModal();
+  m.setAttribute("aria-hidden", show ? "false" : "true");
+  m.classList.toggle("is-open", show);
+}
+
+function openPersonModal({ kind, id=null }){
+  const m = ensurePersonModal();
+  personModalState = { kind, id };
+
+  const title = $("#pmTitle", m);
+  const name = $("#pmName", m);
+  const phone = $("#pmPhone", m);
+  const sourceWrap = $("#pmSourceWrap", m);
+  const source = $("#pmSource", m);
+  const note = $("#pmNote", m);
+  const hint = $("#pmHint", m);
+  const btnConvert = $("#pmConvert", m);
+
+  // load record
+  let item = null;
+  if (id){
+    item = (kind === "lead" ? leads.find(x=>x.id===id) : students.find(x=>x.id===id)) || null;
+  }
+
+  if (kind === "lead"){
+    title.textContent = item ? `Лід • ${item.name || "—"}` : "Новий лід";
+    sourceWrap.style.display = "";
+    btnConvert.style.display = item ? "" : "none";
+    hint.textContent = item ? "Після конвертації лід стане учнем (і зʼявиться в вкладці “Учні”)." : "";
+  } else {
+    title.textContent = item ? `Учень • ${item.name || "—"}` : "Новий учень";
+    sourceWrap.style.display = "none";
+    btnConvert.style.display = "none";
+    hint.textContent = "";
+  }
+
+  name.value = item?.name || "";
+  phone.value = item?.phone || "";
+  if (source) source.value = item?.source || "";
+  note.value = item?.note || "";
+
+  showPersonModal(true);
+}
+
+function savePersonFromModal(){
+  const m = ensurePersonModal();
+  const name = ($("#pmName", m).value || "").trim();
+  const phone = ($("#pmPhone", m).value || "").trim();
+  const source = ($("#pmSource", m)?.value || "").trim();
+  const note = ($("#pmNote", m).value || "").trim();
+
+  if (!name){
+    alert("Вкажи імʼя 🙂");
+    return;
+  }
+
+  const { kind, id } = personModalState;
+
+  if (kind === "lead"){
+    if (id){
+      const idx = leads.findIndex(x=>x.id===id);
+      if (idx>=0) leads[idx] = { ...leads[idx], name, phone, source, note };
+    } else {
+      leads.push({ id:"lead_"+uid(), name, phone, source, note, ts:Date.now() });
+    }
+  } else {
+    if (id){
+      const idx = students.findIndex(x=>x.id===id);
+      if (idx>=0) students[idx] = { ...students[idx], name, phone, note };
+    } else {
+      students.push({ id:"student_"+uid(), name, phone, note, ts:Date.now() });
+    }
+  }
+
+  saveStorage();
+  renderLeadsStudentsPage();
+  showPersonModal(false);
+}
+
+function deletePersonFromModal(){
+  const { kind, id } = personModalState;
+  if (!id) { showPersonModal(false); return; }
+
+  const ok = confirm("Видалити запис?");
+  if (!ok) return;
+
+  if (kind === "lead") leads = leads.filter(x=>x.id!==id);
+  else students = students.filter(x=>x.id!==id);
+
+  saveStorage();
+  renderLeadsStudentsPage();
+  showPersonModal(false);
+}
+
+function convertLeadToStudentFromModal(){
+  const { kind, id } = personModalState;
+  if (kind !== "lead" || !id) return;
+
+  const lead = leads.find(x=>x.id===id);
+  if (!lead) return;
+
+  // add student
+  const exists = students.some(s => norm(s.name) === norm(lead.name));
+  if (!exists){
+    students.push({
+      id:"student_"+uid(),
+      name: lead.name,
+      phone: lead.phone || "",
+      note: lead.note || "",
+      ts: Date.now()
+    });
+  }
+
+  // remove lead
+  leads = leads.filter(x=>x.id!==id);
+
+  saveStorage();
+  renderLeadsStudentsPage();
+  showPersonModal(false);
+
+  // optional: одразу створити урок
+  const go = confirm("Створити перший урок для цього учня?");
+  if (go){
+    openPage("page-lessons");
+    openModalNew();
+    setTimeout(() => {
+      const first = studentsWrap?.querySelector('input[data-student]');
+      if (first) first.value = lead.name;
+    }, 0);
+  }
+}
+
+function openLeadCard(leadId){
+  const lead = (leads || []).find(x => x.id === leadId);
+  if (!lead) return;
+
+  const action = prompt(
+`Лід: ${lead.name}
+Тел: ${lead.phone || "—"}
+Джерело: ${lead.source || "—"}
+Нотатка: ${lead.note || "—"}
+
+Введи дію:
+1 = Перетворити в учня (створити урок)
+2 = Редагувати
+3 = Видалити
+(або Cancel)`
+  );
+
+  if (!action) return;
+
+  if (action.trim() === "1"){
+    // ✅ Створюємо урок і переносимо в “учні”
+    openPage("page-lessons");
+    openModalNew();
+    setTimeout(() => {
+      const first = studentsWrap?.querySelector('input[data-student]');
+      if (first) first.value = lead.name || "";
+      if (fTeacher) fTeacher.value = getSelectedTeacherName();
+      if (fSubject) fSubject.value = "Пробний урок";
+      if (fStatus) fStatus.value = "planned";
+    }, 0);
+    return;
+  }
+
+  if (action.trim() === "2"){
+    const newName = prompt("Імʼя:", lead.name) ?? lead.name;
+    const newPhone = prompt("Телефон:", lead.phone || "") ?? lead.phone;
+    const newSource = prompt("Джерело:", lead.source || "") ?? lead.source;
+    const newNote = prompt("Нотатка:", lead.note || "") ?? lead.note;
+
+    lead.name = (newName || "").trim();
+    lead.phone = (newPhone || "").trim();
+    lead.source = (newSource || "").trim();
+    lead.note = (newNote || "").trim();
+    lead.ts = Date.now();
+
+    saveStorage();
+    renderLeadsStudentsPage();
+    return;
+  }
+
+  if (action.trim() === "3"){
+    const ok = confirm(`Видалити ліда "${lead.name}"?`);
+    if (!ok) return;
+    leads = leads.filter(x => x.id !== leadId);
+    saveStorage();
+    renderLeadsStudentsPage();
+    return;
+  }
 }
 
 function renderTasks(){
@@ -633,6 +957,10 @@ function renderProfileHeader(){
   }
   function escAttr(s){ return escHtml(s); }
 
+  // alias для всього коду, де використовується escapeHtml
+function escapeHtml(s){ return escHtml(s); }
+function escapeAttr(s){ return escAttr(s); }
+
   function metaLineHTML(lesson) {
     const st = lesson.students || [];
     const studentsHtml = st.length
@@ -655,6 +983,111 @@ function renderProfileHeader(){
   function calcHeightPx(durMin) {
     return Math.max((durMin / 60) * PX_PER_HOUR, 34);
   }
+
+  function showLeadModal(show){
+  if (!leadModal) return;
+  leadModal.setAttribute("aria-hidden", show ? "false" : "true");
+  leadModal.classList.toggle("is-open", show);
+}
+
+function openLeadModalNew(){
+  selectedLeadId = null;
+  if (leadModalTitle) leadModalTitle.textContent = "Новий лід";
+
+  if (leadName) leadName.value = "";
+  if (leadPhone) leadPhone.value = "";
+  if (leadSource) leadSource.value = "";
+  if (leadNote) leadNote.value = "";
+
+  if (leadDeleteBtn) leadDeleteBtn.style.display = "none";
+  if (leadConvertBtn) leadConvertBtn.style.display = "none"; // ще нема що конвертити
+  showLeadModal(true);
+}
+
+function openLeadModalEdit(id){
+  const l = (leads||[]).find(x => x.id === id);
+  if (!l) return;
+
+  selectedLeadId = id;
+  if (leadModalTitle) leadModalTitle.textContent = `Лід • ${l.name || "—"}`;
+
+  if (leadName) leadName.value = l.name || "";
+  if (leadPhone) leadPhone.value = l.phone || "";
+  if (leadSource) leadSource.value = l.source || "";
+  if (leadNote) leadNote.value = l.note || "";
+
+  if (leadDeleteBtn) leadDeleteBtn.style.display = "inline-block";
+  if (leadConvertBtn) leadConvertBtn.style.display = "inline-block";
+  showLeadModal(true);
+}
+
+function upsertLeadFromForm(){
+  const name = (leadName?.value || "").trim();
+  if (!name) { alert("Вкажи ім’я ліда 🙂"); return; }
+
+  const phone = (leadPhone?.value || "").trim();
+  const source = (leadSource?.value || "").trim();
+  const note = (leadNote?.value || "").trim();
+
+  if (selectedLeadId){
+    const idx = leads.findIndex(x => x.id === selectedLeadId);
+    if (idx >= 0){
+      leads[idx] = { ...leads[idx], name, phone, source, note };
+    }
+  } else {
+    leads.push({ id:"lead_"+uid(), name, phone, source, note, ts: Date.now() });
+  }
+
+  saveStorage();
+  renderLeadsStudentsPage();
+  showLeadModal(false);
+}
+
+function deleteLead(){
+  if (!selectedLeadId) return;
+  const l = leads.find(x => x.id === selectedLeadId);
+  if (!l) return;
+  if (!confirm(`Видалити ліда "${l.name}"?`)) return;
+
+  leads = leads.filter(x => x.id !== selectedLeadId);
+  selectedLeadId = null;
+
+  saveStorage();
+  renderLeadsStudentsPage();
+  showLeadModal(false);
+}
+
+function convertLeadToStudent(){
+  if (!selectedLeadId) return;
+  const l = leads.find(x => x.id === selectedLeadId);
+  if (!l) return;
+
+  // 1) створюємо урок (через твою existing modal/new)
+  showLeadModal(false);
+  openPage("page-lessons");
+  openModalNew();
+
+  // 2) підставляємо ім’я ліда як учня + нотатку
+  setTimeout(() => {
+    const first = studentsWrap?.querySelector('input[data-student]');
+    if (first) first.value = l.name;
+
+    if (fNote){
+      const extra = [];
+      if (l.phone) extra.push(`Тел: ${l.phone}`);
+      if (l.source) extra.push(`Джерело: ${l.source}`);
+      if (l.note) extra.push(l.note);
+      fNote.value = extra.join(" • ");
+    }
+  }, 0);
+
+  // 3) (опційно) видалити ліда після конвертації
+  // якщо хочеш: одразу прибираємо зі списку лідів
+  leads = leads.filter(x => x.id !== selectedLeadId);
+  selectedLeadId = null;
+  saveStorage();
+  renderLeadsStudentsPage();
+}
 
   // ---------------- UI: time column ----------------
   function renderTimeCol() {
@@ -1515,7 +1948,7 @@ function openSalaryStatement(){
     if (fDur) fDur.value = 50;
 
     if (fSubject) fSubject.value = "";
-    if (fTeacher) fTeacher.value = "Платонова Юлія";
+    if (fTeacher) fTeacher.value = getSelectedTeacherName();
     if (fType) fType.value = "Індивідуальний";
     if (fStatus) fStatus.value = "planned";
     if (fNote) fNote.value = "";
@@ -1716,17 +2149,22 @@ on(chatInput, "keydown", (e) => {
 
 on(addLeadBtn, "click", addLeadFlow);
 on(leadsSearch, "input", renderLeadsStudentsPage);
-on(tabLeadsBtn, "click", () => { /* візуально просто */ 
+on(tabLeadsBtn, "click", () => {
+  leadsTab = "leads";
   tabLeadsBtn.classList.add("btn-primary");
   tabLeadsBtn.classList.remove("btn-ghost");
   tabStudentsBtn.classList.add("btn-ghost");
   tabStudentsBtn.classList.remove("btn-primary");
+  renderLeadsStudentsPage();
 });
+
 on(tabStudentsBtn, "click", () => {
+  leadsTab = "students";
   tabStudentsBtn.classList.add("btn-primary");
   tabStudentsBtn.classList.remove("btn-ghost");
   tabLeadsBtn.classList.add("btn-ghost");
   tabLeadsBtn.classList.remove("btn-primary");
+  renderLeadsStudentsPage();
 });
 
     // view icons
@@ -1759,6 +2197,25 @@ on(btnSalaryStatement, "click", openSalaryStatement);
 // close report modal
 on(reportModal, "click", (e) => {
   if (e.target?.dataset?.close === "1") showReportModal(false);
+});
+
+// lead modal
+on(addLeadBtn, "click", () => {
+  if (leadsTab === "students") openPersonModal({ kind:"student" });
+  else openPersonModal({ kind:"lead" });
+});
+
+on(leadSaveBtn, "click", upsertLeadFromForm);
+on(leadDeleteBtn, "click", deleteLead);
+on(leadConvertBtn, "click", convertLeadToStudent);
+
+on(leadModal, "click", (e) => {
+  if (e.target?.dataset?.close === "1") showLeadModal(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    showLeadModal(false);
+  }
 });
 
 function chatThreadTitleByMembers(memberIds){
@@ -1863,15 +2320,6 @@ function renderChatRoom(){
   }
 
   chatMsgs.scrollTop = chatMsgs.scrollHeight;
-}
-
-function escapeHtml(s){
-  return String(s||"")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
 }
 
 function renderTasksPage(){
@@ -2191,13 +2639,5 @@ function sendChatMessage(){
   } else {
     init();
   }
-
-  document.addEventListener("click", (e) => {
-  const addBtn = e.target.closest("#addLeadBtn");
-  if (addBtn) {
-    addLeadFlow();
-    return;
-  }
-});
 
 })();

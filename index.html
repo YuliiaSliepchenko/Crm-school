@@ -399,6 +399,53 @@
     </div>
   </div>
 
+  <!-- Lead modal -->
+<div class="modal-js" id="leadModal" aria-hidden="true">
+  <div class="modal-js__backdrop" data-close="1"></div>
+
+  <div class="modal-js__card">
+    <div class="modal-js__head">
+      <div class="modal-js__title" id="leadModalTitle">Новий лід</div>
+      <button class="icon-btn" data-close="1" title="Закрити">✕</button>
+    </div>
+
+    <div class="modal-js__body">
+      <div class="form-grid">
+        <div class="field field--full">
+          <span>Ім’я</span>
+          <input id="leadName" placeholder="Напр. Іван Петренко" />
+        </div>
+
+        <div class="field">
+          <span>Телефон</span>
+          <input id="leadPhone" placeholder="+380..." />
+        </div>
+
+        <div class="field">
+          <span>Джерело</span>
+          <input id="leadSource" placeholder="Instagram / Telegram / сайт..." />
+        </div>
+
+        <div class="field field--full">
+          <span>Нотатка</span>
+          <input id="leadNote" placeholder="Коротко: вік, інтереси, зручний час..." />
+        </div>
+      </div>
+
+      <div class="muted" style="margin-top:10px;">
+        Після збереження можна “Перетворити в учня” — створимо урок і буде картка як у учня.
+      </div>
+    </div>
+
+    <div class="modal-js__foot">
+      <button class="btn btn-primary" id="leadSaveBtn">💾 Зберегти</button>
+      <button class="btn btn-ghost" id="leadConvertBtn">➡️ Перетворити в учня</button>
+      <button class="btn btn-ghost" id="leadDeleteBtn" style="border-color:#fecaca;color:#b91c1c;">🗑 Видалити</button>
+      <button class="btn btn-ghost" data-close="1">Скасувати</button>
+    </div>
+  </div>
+</div>
+
   <!-- Report modal -->
 <div class="modal-js" id="reportModal" aria-hidden="true">
   <div class="modal-js__backdrop" data-close="1"></div>
