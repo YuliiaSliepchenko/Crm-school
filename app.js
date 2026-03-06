@@ -447,9 +447,7 @@ if (leadsTab === "leads") {
   `;
 
   // ✅ клік по ліду
-  el.addEventListener("click", () => openPersonModal({ kind:"lead", id: l.id }));
   el.addEventListener("click", () => openLeadModalEdit(l.id));
-
   el.addEventListener("click", () => openPersonModal({ kind:"lead", id: l.id }));
   el.addEventListener("contextmenu", (e) => {
   e.preventDefault();
@@ -1191,13 +1189,22 @@ function deleteLead(){
       `;
 
       on(el, "click", (e) => {
-  // Shift+click = редагувати урок
-  if (e.shiftKey) { openModalFor(lesson.id); return; }
+  e.preventDefault();
+  e.stopPropagation();
 
-  // звичайний клік = картка учня (беремо першого зі списку)
-  const firstStudent = (lesson.students || [])[0];
-  if (firstStudent) openStudentCard(el, firstStudent, lesson.id);
-  else openModalFor(lesson.id);
+  if (e.shiftKey) {
+    openModalFor(lesson.id);
+    return;
+  }
+
+  const studentList = Array.isArray(lesson.students) ? lesson.students.filter(Boolean) : [];
+  const firstStudent = studentList.length ? studentList[0] : "";
+
+  if (firstStudent) {
+    openStudentCard(el, firstStudent, lesson.id);
+  } else {
+    openModalFor(lesson.id);
+  }
 });
       on(el, "dragstart", onDragStart);
 
@@ -2108,25 +2115,31 @@ function openSalaryStatement(){
   }
 
   function openPage(pageId) {
-  currentPageId = pageId;
+  const safePages = ["page-lessons", "page-profile", "page-leads", "page-chat", "page-student"];
+
+  currentPageId = safePages.includes(pageId) ? pageId : "page-lessons";
 
   pages.forEach(p => p.classList.remove("is-active"));
-  const target = document.getElementById(pageId);
+
+  const realPageId = safePages.includes(pageId) ? pageId : "page-lessons";
+  const target = document.getElementById(realPageId);
   if (target) target.classList.add("is-active");
 
   document.querySelectorAll(".nav__item").forEach(a => a.classList.remove("active"));
-  document.querySelectorAll(`.nav__item[data-page="${pageId}"]`).forEach(a => a.classList.add("active"));
+  document.querySelectorAll(`.nav__item[data-page="${realPageId}"]`).forEach(a => a.classList.add("active"));
 
-  if (pageId === "page-lessons") {
+  if (realPageId === "page-lessons") {
+    setMode(ui.mode || "calendar");
+    setView(ui.view || "day");
     rerenderAll();
   }
 
-  if (pageId === "page-profile") {
+  if (realPageId === "page-profile") {
     renderProfileHeader();
     renderProfile();
   }
 
-  if (pageId === "page-leads") {
+  if (realPageId === "page-leads") {
     renderLeadsStudentsPage();
   }
 
@@ -2575,31 +2588,47 @@ function sendChatMessage(){
       }
     });
 
-    on(scCloseBtn, "click", closeStudentCard);
+    on(scCloseBtn, "click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeStudentCard();
+});
 
-    on(scOpenBtn, "click", () => {
-      if (studentCardState.name) openStudentPage(studentCardState.name);
-    });
+    on(scOpenBtn, "click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
 
-    on(scDoneBtn, "click", () => {
-      const id = studentCardState.lessonId;
-      const l = lessons.find(x => x.id === id);
-      if (!l) return;
-      l.status = "done";
-      saveStorage();
-      rerenderAll();
-      closeStudentCard();
-    });
+  if (!studentCardState.name) return;
+  openStudentPage(studentCardState.name);
+});
 
-    on(scCancelBtn, "click", () => {
-      const id = studentCardState.lessonId;
-      const l = lessons.find(x => x.id === id);
-      if (!l) return;
-      l.status = "cancelled";
-      saveStorage();
-      rerenderAll();
-      closeStudentCard();
-    });
+    on(scDoneBtn, "click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const id = studentCardState.lessonId;
+  const l = lessons.find(x => x.id === id);
+  if (!l) return;
+
+  l.status = "done";
+  saveStorage();
+  rerenderAll();
+  closeStudentCard();
+});
+
+    on(scCancelBtn, "click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const id = studentCardState.lessonId;
+  const l = lessons.find(x => x.id === id);
+  if (!l) return;
+
+  l.status = "cancelled";
+  saveStorage();
+  rerenderAll();
+  closeStudentCard();
+});
 
     // keep popover position on resize/scroll
     window.addEventListener("resize", () => {
@@ -2650,6 +2679,9 @@ on(studentAddLessonBtn, "click", () => {
 
   renderProfileHeader();
   renderTopTeacherSelect();
+
+  setMode(ui.mode || "calendar");
+  setView(ui.view || "day");
   applyUIToControls();
 
   openPage(currentPageId || "page-lessons");
