@@ -56,6 +56,7 @@ let activeChatId = null;
 
 let studentCardState = { name: null, lessonId: null, anchor: null };
 let lastPageId = "page-lessons";
+let currentPageId = "page-lessons";
 
 // демо "ви" як викладач (потім зробимо логін)
 const ME = { id: "teacher_platonova", name: "Платонова Юлія" };
@@ -173,6 +174,7 @@ const chatSendBtn = $("#chatSendBtn");
   const studentSchedule = $("#studentSchedule");
   const studentStats = $("#studentStats");
   const studentAddLessonBtn = $("#studentAddLessonBtn");
+  const studentDeleteBtn = $("#studentDeleteBtn");
 
   // leads/students page refs
 const leadsHint = $("#leadsHint");
@@ -279,7 +281,7 @@ const pages = document.querySelectorAll(".page");
   // ---------------- Storage ----------------
   function saveStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lessons));
-  localStorage.setItem(UI_KEY, JSON.stringify({ currentDayISO, ui, currentTeacher }));
+  localStorage.setItem(UI_KEY, JSON.stringify({ currentDayISO, ui, currentTeacher, currentPageId }));
   localStorage.setItem(CHAT_KEY, JSON.stringify({ chats, activeChatId }));
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
   localStorage.setItem(LEADS_KEY, JSON.stringify(leads));
@@ -295,13 +297,15 @@ const pages = document.querySelectorAll(".page");
     }
 
     try {
-      const rawUI = localStorage.getItem(UI_KEY);
-      if (rawUI) {
-        const parsed = JSON.parse(rawUI);
-        currentDayISO = parsed.currentDayISO || currentDayISO;
-        ui = { ...ui, ...(parsed.ui || {}) };
-      }
-    } catch {}
+  const rawUI = localStorage.getItem(UI_KEY);
+  if (rawUI) {
+    const parsed = JSON.parse(rawUI);
+    currentDayISO = parsed.currentDayISO || currentDayISO;
+    ui = { ...ui, ...(parsed.ui || {}) };
+    currentTeacher = parsed.currentTeacher || currentTeacher;
+    currentPageId = parsed.currentPageId || "page-lessons";
+  }
+} catch {}
 
     // tasks
 try {
@@ -402,6 +406,15 @@ function uniqueStudents(){
 function renderLeadsStudentsPage(){
   if (!leadsList || !studentsList) return;
 
+  // показ/приховування колонок
+if (leadsTab === "leads") {
+  leadsList.parentElement.style.display = "";
+  studentsList.parentElement.style.display = "none";
+} else {
+  leadsList.parentElement.style.display = "none";
+  studentsList.parentElement.style.display = "";
+}
+
   const q = (leadsSearch?.value || "").trim().toLowerCase();
 
   if (leadsHint){
@@ -434,10 +447,10 @@ function renderLeadsStudentsPage(){
   `;
 
   // ✅ клік по ліду
-  el.addEventListener("click", () => openLeadCard(l.id));
+  el.addEventListener("click", () => openPersonModal({ kind:"lead", id: l.id }));
   el.addEventListener("click", () => openLeadModalEdit(l.id));
 
-  el.addEventListener("click", () => openStudentPage(s.name));
+  el.addEventListener("click", () => openPersonModal({ kind:"lead", id: l.id }));
   el.addEventListener("contextmenu", (e) => {
   e.preventDefault();
   const st = students.find(x => norm(x.name) === norm(s.name));
@@ -681,8 +694,8 @@ function convertLeadToStudentFromModal(){
   const lead = leads.find(x=>x.id===id);
   if (!lead) return;
 
-  // add student
-  const exists = students.some(s => norm(s.name) === norm(lead.name));
+  // ✅ додаємо в учні
+  const exists = students.some(s => norm(s.name) === norm(lead.name) || (lead.phone && norm(s.phone) === norm(lead.phone)));
   if (!exists){
     students.push({
       id:"student_"+uid(),
@@ -693,23 +706,22 @@ function convertLeadToStudentFromModal(){
     });
   }
 
-  // remove lead
+  // ✅ видаляємо з лідів
   leads = leads.filter(x=>x.id!==id);
+
+  // ✅ після конвертації: показати вкладку "Учні"
+  leadsTab = "students";
+  tabStudentsBtn?.classList.add("btn-primary");
+  tabStudentsBtn?.classList.remove("btn-ghost");
+  tabLeadsBtn?.classList.add("btn-ghost");
+  tabLeadsBtn?.classList.remove("btn-primary");
 
   saveStorage();
   renderLeadsStudentsPage();
   showPersonModal(false);
 
-  // optional: одразу створити урок
-  const go = confirm("Створити перший урок для цього учня?");
-  if (go){
-    openPage("page-lessons");
-    openModalNew();
-    setTimeout(() => {
-      const first = studentsWrap?.querySelector('input[data-student]');
-      if (first) first.value = lead.name;
-    }, 0);
-  }
+  // ❌ НЕ створюємо урок автоматом
+  // Якщо захочеш — додамо кнопку "Створити урок" прямо в модалці.
 }
 
 function openLeadCard(leadId){
@@ -1057,37 +1069,7 @@ function deleteLead(){
   showLeadModal(false);
 }
 
-function convertLeadToStudent(){
-  if (!selectedLeadId) return;
-  const l = leads.find(x => x.id === selectedLeadId);
-  if (!l) return;
 
-  // 1) створюємо урок (через твою existing modal/new)
-  showLeadModal(false);
-  openPage("page-lessons");
-  openModalNew();
-
-  // 2) підставляємо ім’я ліда як учня + нотатку
-  setTimeout(() => {
-    const first = studentsWrap?.querySelector('input[data-student]');
-    if (first) first.value = l.name;
-
-    if (fNote){
-      const extra = [];
-      if (l.phone) extra.push(`Тел: ${l.phone}`);
-      if (l.source) extra.push(`Джерело: ${l.source}`);
-      if (l.note) extra.push(l.note);
-      fNote.value = extra.join(" • ");
-    }
-  }, 0);
-
-  // 3) (опційно) видалити ліда після конвертації
-  // якщо хочеш: одразу прибираємо зі списку лідів
-  leads = leads.filter(x => x.id !== selectedLeadId);
-  selectedLeadId = null;
-  saveStorage();
-  renderLeadsStudentsPage();
-}
 
   // ---------------- UI: time column ----------------
   function renderTimeCol() {
@@ -1636,6 +1618,30 @@ if (studentSchedule){
     openPage("page-student");
   }
 
+  function deleteCurrentStudent(){
+  const name = (studentNameTitle?.textContent || "").trim();
+  if (!name) return;
+
+  const ok = confirm(`Видалити учня "${name}"?`);
+  if (!ok) return;
+
+  // 1. прибираємо зі списку students
+  students = students.filter(s => norm(s.name) !== norm(name));
+
+  // 2. прибираємо з усіх уроків
+  lessons = lessons
+    .map(l => ({
+      ...l,
+      students: (l.students || []).filter(s => norm(s) !== norm(name))
+    }))
+    .filter(l => (l.students || []).length > 0); // якщо урок був тільки з цим учнем — видаляємо урок
+
+  saveStorage();
+  rerenderAll();
+  renderLeadsStudentsPage();
+  openPage("page-leads");
+}
+
 function monthLabel(y,m){
   const months = ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"];
   return `${months[m]} ${y}`;
@@ -2102,19 +2108,29 @@ function openSalaryStatement(){
   }
 
   function openPage(pageId) {
+  currentPageId = pageId;
+
   pages.forEach(p => p.classList.remove("is-active"));
   const target = document.getElementById(pageId);
   if (target) target.classList.add("is-active");
 
-  // active menu highlight
   document.querySelectorAll(".nav__item").forEach(a => a.classList.remove("active"));
   document.querySelectorAll(`.nav__item[data-page="${pageId}"]`).forEach(a => a.classList.add("active"));
 
-  // якщо відкрили уроки — перемальовуємо календар (на всяк)
-  if (pageId === "page-lessons") rerenderAll();
-if (pageId === "page-profile") renderProfile();
-if (pageId === "page-leads") renderLeadsStudentsPage();
-  if (pageId === "page-profile") renderProfileHeader();
+  if (pageId === "page-lessons") {
+    rerenderAll();
+  }
+
+  if (pageId === "page-profile") {
+    renderProfileHeader();
+    renderProfile();
+  }
+
+  if (pageId === "page-leads") {
+    renderLeadsStudentsPage();
+  }
+
+  saveStorage();
 }
 
   // ---------------- Wire events ----------------
@@ -2207,7 +2223,7 @@ on(addLeadBtn, "click", () => {
 
 on(leadSaveBtn, "click", upsertLeadFromForm);
 on(leadDeleteBtn, "click", deleteLead);
-on(leadConvertBtn, "click", convertLeadToStudent);
+on(leadConvertBtn, "click", convertLeadToStudentFromModal);
 
 on(leadModal, "click", (e) => {
   if (e.target?.dataset?.close === "1") showLeadModal(false);
@@ -2600,7 +2616,9 @@ function sendChatMessage(){
 
     // student page buttons
     on(studentBackBtn, "click", () => openPage(lastPageId || "page-lessons"));
-    on(studentAddLessonBtn, "click", () => {
+on(studentDeleteBtn, "click", deleteCurrentStudent);
+
+on(studentAddLessonBtn, "click", () => {
       // швидко відкриємо модал "новий урок" і підставимо учня
       openPage("page-lessons");
       openModalNew();
@@ -2619,19 +2637,23 @@ function sendChatMessage(){
 
   // ---------------- Boot ----------------
   function init() {
-    loadStorage();
-    wireEvents();
-    ensureDemoChats();
-    renderProfile();
+  loadStorage();
+  wireEvents();
+  ensureDemoChats();
 
-    openPage("page-lessons"); // стартова вкладка
+  statusTabs.forEach(b => {
+    b.classList.toggle(
+      "is-active",
+      (b.dataset.status || "planned") === (ui.listStatus || "planned")
+    );
+  });
 
-    // активна вкладка списку
-    statusTabs.forEach(b => b.classList.toggle("is-active", (b.dataset.status || "planned") === (ui.listStatus || "planned")));
+  renderProfileHeader();
+  renderTopTeacherSelect();
+  applyUIToControls();
 
-    setMode(ui.mode || "calendar");
-    rerenderAll();
-  }
+  openPage(currentPageId || "page-lessons");
+}
 
   // ensure DOM ready even if script moved
   if (document.readyState === "loading") {
