@@ -350,6 +350,49 @@ try {
 }
   }
 
+  function normalizeCurrentDayISO() {
+  currentDayISO = normalizeLessonDate(currentDayISO) || isoToday();
+
+  const validDates = [...new Set(
+    (lessons || [])
+      .map(l => normalizeLessonDate(l.date))
+      .filter(Boolean)
+  )].sort();
+
+  if (!validDates.length) {
+    currentDayISO = isoToday();
+    return;
+  }
+
+  if (!validDates.includes(currentDayISO)) {
+    const today = isoToday();
+    currentDayISO = validDates.includes(today) ? today : validDates[0];
+  }
+}
+
+function normalizeLessonDate(dateStr) {
+  if (!dateStr) return "";
+
+  // уже нормальний ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+  // формат 04.03.2026 або 04/03/2026
+  const m1 = String(dateStr).match(/^(\d{2})[./](\d{2})[./](\d{4})$/);
+  if (m1) {
+    const [, dd, mm, yyyy] = m1;
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return "";
+}
+
+function normalizeLessonsDates() {
+  lessons = (lessons || []).map(l => ({
+    ...l,
+    date: normalizeLessonDate(l.date) || isoToday()
+  }));
+}
+
   function renderTopTeacherSelect(){
   if (!teacherTopSelect) return;
 
@@ -2099,10 +2142,8 @@ function openSalaryStatement(){
 }
 
   function getActiveView() {
-    if (tabMonth?.checked) return "month";
-    if (tabWeek?.checked) return "week";
-    return "day";
-  }
+  return ui.view || "day";
+}
 
   function navDelta(sign) {
     const v = getActiveView();
@@ -2667,8 +2708,11 @@ on(studentAddLessonBtn, "click", () => {
   // ---------------- Boot ----------------
   function init() {
   loadStorage();
+  normalizeLessonsDates();
+  normalizeCurrentDayISO();
   wireEvents();
-  ensureDemoChats();
+  // ensureDemoChats();
+  saveStorage();
 
   statusTabs.forEach(b => {
     b.classList.toggle(
