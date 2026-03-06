@@ -1770,7 +1770,21 @@ function renderProfile(){
         const st = (l.students||[])[0] || "—";
         const item = document.createElement("div");
         item.className = "profile2__lesson";
-        item.innerHTML = `<span class="profile2__time">${l.start}</span> <span>${st}</span> <span class="muted">• ${l.subject}</span>`;
+        
+        item.innerHTML = `
+  <span class="profile2__time">${l.start}</span>
+  <span class="profile2__student" data-student="${escapeAttr(st)}">${escapeHtml(st)}</span>
+  <span class="muted">• ${escapeHtml(l.subject)}</span>
+`;
+        
+        const studentEl = item.querySelector(".profile2__student");
+if (studentEl) {
+  on(studentEl, "click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openStudentPage(st);
+  });
+}
         right.appendChild(item);
       }
     }
