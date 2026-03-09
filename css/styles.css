@@ -1220,3 +1220,253 @@ a{ color:inherit; text-decoration:none; }
 .profile2__student:hover{
   text-decoration: underline;
 }
+
+/* ===== Mail ===== */
+.mail-page{
+  display:grid;
+  grid-template-columns: 380px 1fr;
+  gap:14px;
+  min-height: calc(100vh - 56px - 28px);
+}
+
+.mail-sidebar,
+.mail-view{
+  min-height: 720px;
+}
+
+.mail-sidebar__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:14px;
+  border-bottom:1px solid var(--line);
+}
+
+.mail-title{
+  font-weight:950;
+  font-size:18px;
+}
+
+.mail-filters{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  padding:12px 14px 0;
+}
+
+.mail-filter{
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.mail-filter.is-active{
+  background:#ecfdf3;
+  border-color:#86efac;
+}
+
+.mail-search-wrap{
+  padding:12px 14px;
+  border-bottom:1px solid var(--line);
+}
+
+.mail-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:10px;
+}
+
+.mail-item{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+  cursor:pointer;
+  transition:.15s ease;
+}
+.mail-item:hover{
+  background:#fafafa;
+  transform:translateY(-1px);
+}
+.mail-item.is-active{
+  border-color:#b6d7ff;
+  box-shadow:0 0 0 3px rgba(45,156,219,.10);
+}
+.mail-item.is-new{
+  background:#f8fffb;
+}
+
+.mail-item__top{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+}
+.mail-item__name{
+  font-weight:950;
+}
+.mail-item__date{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:800;
+}
+.mail-item__subject{
+  margin-top:4px;
+  font-weight:800;
+}
+.mail-item__snippet{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.35;
+}
+
+.mail-badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  font-size:11px;
+  font-weight:900;
+}
+.mail-badge--new{
+  background:#ecfdf3;
+  border-color:#86efac;
+  color:#166534;
+}
+.mail-badge--read{
+  background:#f8fafc;
+  color:#475569;
+}
+.mail-badge--work{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1d4ed8;
+}
+.mail-badge--spam{
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#b91c1c;
+}
+
+.mail-view{
+  position:relative;
+  overflow:hidden;
+}
+
+.mail-view__head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  padding:16px;
+  border-bottom:1px solid var(--line);
+}
+
+.mail-view__subject{
+  font-size:22px;
+  font-weight:950;
+}
+
+.mail-view__meta{
+  margin-top:6px;
+  color:var(--muted);
+  font-weight:700;
+}
+
+.mail-view__actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.mail-view__body{
+  padding:16px;
+  animation: pageIn .18s ease-out;
+}
+
+.mail-kv{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+  margin-bottom:18px;
+}
+
+.mail-kv__row{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fbfcfe;
+}
+.mail-kv__row span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+
+.mail-message{
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:14px;
+  background:#fff;
+}
+
+.mail-message__title{
+  font-weight:950;
+  margin-bottom:10px;
+}
+.mail-message__text{
+  white-space:pre-wrap;
+  line-height:1.55;
+}
+
+@media (max-width: 1100px){
+  .mail-page{
+    grid-template-columns: 1fr;
+  }
+}
+
+.mail-item{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+  cursor:pointer;
+  transition:.18s ease;
+  animation: mailItemIn .2s ease;
+}
+
+@keyframes mailItemIn{
+  from{
+    opacity:0;
+    transform:translateY(6px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+.nav-badge{
+  margin-left:auto;
+  min-width:22px;
+  height:22px;
+  padding:0 6px;
+  border-radius:999px;
+  background:#ef4444;
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  display:grid;
+  place-items:center;
+}
+.nav-badge.is-hidden{
+  display:none;
+}

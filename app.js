@@ -14,6 +14,7 @@
   const TASKS_KEY = "skilled_crm_tasks_v1";
   const LEADS_KEY = "skilled_crm_leads_v1";
   const STUDENTS_KEY = "skilled_crm_students_v1";
+  const MAIL_KEY = "skilled_crm_mail_v1";
 
   const DAY_START = 7 * 60;   // 07:00
   const DAY_END = 21 * 60;    // 21:00
@@ -57,6 +58,10 @@ let activeChatId = null;
 let studentCardState = { name: null, lessonId: null, anchor: null };
 let lastPageId = "page-lessons";
 let currentPageId = "page-lessons";
+let mails = [];
+let activeMailId = null;
+let mailFilter = "all";
+let mailSearch = "";
 
 // демо "ви" як викладач (потім зробимо логін)
 const ME = { id: "teacher_platonova", name: "Платонова Юлія" };
@@ -202,6 +207,30 @@ let selectedLeadId = null;
 const navLinks = document.querySelectorAll(".nav__item[data-page]");
 const pages = document.querySelectorAll(".page");
 
+const mailList = $("#mailList");
+const mailSearchInput = $("#mailSearchInput");
+const mailRefreshBtn = $("#mailRefreshBtn");
+const mailEmpty = $("#mailEmpty");
+const mailContent = $("#mailContent");
+
+const mailSubject = $("#mailSubject");
+const mailMeta = $("#mailMeta");
+const mailName = $("#mailName");
+const mailPhone = $("#mailPhone");
+const mailEmail = $("#mailEmail");
+const mailAge = $("#mailAge");
+const mailType = $("#mailType");
+const mailDate = $("#mailDate");
+const mailText = $("#mailText");
+
+const mailMarkReadBtn = $("#mailMarkReadBtn");
+const mailInWorkBtn = $("#mailInWorkBtn");
+const mailSpamBtn = $("#mailSpamBtn");
+const mailDeleteBtn = $("#mailDeleteBtn");
+
+const mailFilterButtons = document.querySelectorAll("[data-mail-filter]");
+
+const mailNavBadge = $("#mailNavBadge");
 
   // ---------------- Utils ----------------
   function isoToday() {
@@ -286,6 +315,7 @@ const pages = document.querySelectorAll(".page");
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
   localStorage.setItem(LEADS_KEY, JSON.stringify(leads));
   localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+  localStorage.setItem(MAIL_KEY, JSON.stringify({ mails, activeMailId, mailFilter, mailSearch }));
 }
 
   function loadStorage() {
@@ -333,6 +363,21 @@ try {
     currentTeacher = parsed.currentTeacher || currentTeacher;
   }
 } catch {}
+
+try {
+  const rawMail = localStorage.getItem(MAIL_KEY);
+  if (rawMail) {
+    const parsed = JSON.parse(rawMail);
+    mails = parsed.mails || [];
+    activeMailId = parsed.activeMailId || null;
+    mailFilter = parsed.mailFilter || "all";
+    mailSearch = parsed.mailSearch || "";
+  } else {
+    mails = seedMails();
+  }
+} catch {
+  mails = seedMails();
+}
 
     try{
   const rawChat = localStorage.getItem(CHAT_KEY);
@@ -952,6 +997,198 @@ function renderProfileHeader(){
       mkLesson({ date: t, start: "19:00", dur: 50, subject: "Основи ШІ", students:["Фощан Гліб"], teacher: "Платонова Юлія", type:"Індивідуальний", status:"debt", note:"14 років" }),
     ];
   }
+
+  function seedMails(){
+  return [
+    {
+      id: "mail_" + uid(),
+      name: "Олена Мельник",
+      phone: "+380991112233",
+      email: "test1@gmail.com",
+      childAge: "10",
+      subject: "Пробний урок з Roblox",
+      formType: "trial_lesson",
+      message: "Добрий день! Хочу записати дитину на пробний урок з Roblox. Цікавить вечірній час.",
+      status: "new",
+      isRead: false,
+      source: "Formspree / site",
+      createdAt: Date.now() - 1000 * 60 * 15
+    },
+    {
+      id: "mail_" + uid(),
+      name: "Ірина Коваленко",
+      phone: "+380671234567",
+      email: "test2@gmail.com",
+      childAge: "8",
+      subject: "Запит по курсу AI",
+      formType: "course_question",
+      message: "Підкажіть, будь ласка, чи підійде курс ШІ для дитини 8 років?",
+      status: "in_progress",
+      isRead: true,
+      source: "Formspree / site",
+      createdAt: Date.now() - 1000 * 60 * 60 * 3
+    },
+    {
+      id: "mail_" + uid(),
+      name: "Spam Test",
+      phone: "",
+      email: "spam@spam.com",
+      childAge: "",
+      subject: "Реклама послуг",
+      formType: "other",
+      message: "Небажане повідомлення.",
+      status: "spam",
+      isRead: true,
+      source: "Other",
+      createdAt: Date.now() - 1000 * 60 * 60 * 8
+    }
+  ];
+}
+
+function formatMailDate(ts){
+  return new Date(ts).toLocaleString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function mailStatusBadge(status){
+  if (status === "new") return `<span class="mail-badge mail-badge--new">Нове</span>`;
+  if (status === "read") return `<span class="mail-badge mail-badge--read">Прочитане</span>`;
+  if (status === "in_progress") return `<span class="mail-badge mail-badge--work">В роботі</span>`;
+  if (status === "spam") return `<span class="mail-badge mail-badge--spam">Спам</span>`;
+  return `<span class="mail-badge">${escapeHtml(status)}</span>`;
+}
+
+function filteredMails(){
+  return (mails || [])
+    .filter(m => {
+      if (mailFilter === "all") return true;
+      return m.status === mailFilter;
+    })
+    .filter(m => {
+      const q = (mailSearch || "").trim().toLowerCase();
+      if (!q) return true;
+      const hay = `${m.name||""} ${m.email||""} ${m.phone||""} ${m.subject||""} ${m.message||""}`.toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function renderMailList(){
+  if (!mailList) return;
+
+  mailList.innerHTML = "";
+  const list = filteredMails();
+
+  if (!list.length){
+    mailList.innerHTML = `<div class="muted" style="padding:10px;">Повідомлень поки немає 🙂</div>`;
+    return;
+  }
+
+  for (const m of list){
+    const item = document.createElement("div");
+    item.className = "mail-item"
+      + (m.id === activeMailId ? " is-active" : "")
+      + (m.status === "new" ? " is-new" : "");
+
+    item.innerHTML = `
+      <div class="mail-item__top">
+        <div class="mail-item__name">${escapeHtml(m.name || "Без імені")}</div>
+        <div class="mail-item__date">${formatMailDate(m.createdAt)}</div>
+      </div>
+      <div class="mail-item__subject">${escapeHtml(m.subject || "Без теми")} ${mailStatusBadge(m.status)}</div>
+      <div class="mail-item__snippet">${escapeHtml((m.message || "").slice(0, 90))}${(m.message || "").length > 90 ? "..." : ""}</div>
+    `;
+
+    on(item, "click", () => {
+      activeMailId = m.id;
+      if (m.status === "new") {
+        m.status = "read";
+        m.isRead = true;
+      }
+      saveStorage();
+      renderMailPage();
+    });
+
+    mailList.appendChild(item);
+  }
+}
+
+function renderMailNavBadge(){
+  if (!mailNavBadge) return;
+  const count = (mails || []).filter(m => m.status === "new").length;
+  mailNavBadge.textContent = count;
+  mailNavBadge.classList.toggle("is-hidden", count === 0);
+}
+
+function renderMailContent(){
+  if (!mailEmpty || !mailContent) return;
+
+  const m = mails.find(x => x.id === activeMailId);
+
+  if (!m){
+    mailEmpty.style.display = "";
+    mailContent.style.display = "none";
+    return;
+  }
+
+  mailEmpty.style.display = "none";
+  mailContent.style.display = "block";
+
+  if (mailSubject) mailSubject.textContent = m.subject || "Без теми";
+  if (mailMeta) mailMeta.textContent = `${m.source || "site"} • ${formatMailDate(m.createdAt)}`;
+  if (mailName) mailName.textContent = m.name || "—";
+  if (mailPhone) mailPhone.textContent = m.phone || "—";
+  if (mailEmail) mailEmail.textContent = m.email || "—";
+  if (mailAge) mailAge.textContent = m.childAge || "—";
+  if (mailType) mailType.textContent = m.formType || "—";
+  if (mailDate) mailDate.textContent = formatMailDate(m.createdAt);
+  if (mailText) mailText.textContent = m.message || "—";
+}
+
+function renderMailFilters(){
+  mailFilterButtons.forEach(btn => {
+    btn.classList.toggle("is-active", btn.dataset.mailFilter === mailFilter);
+  });
+}
+
+function renderMailPage(){
+  if (mailSearchInput) mailSearchInput.value = mailSearch || "";
+
+  const list = filteredMails();
+
+  if (!activeMailId && list.length) {
+    activeMailId = list[0].id;
+  }
+
+  if (activeMailId && !list.some(m => m.id === activeMailId)) {
+    activeMailId = list.length ? list[0].id : null;
+  }
+
+  renderMailFilters();
+  renderMailList();
+  renderMailContent();
+}
+
+function updateActiveMailStatus(status){
+  const m = mails.find(x => x.id === activeMailId);
+  if (!m) return;
+  m.status = status;
+  if (status !== "new") m.isRead = true;
+  saveStorage();
+  renderMailPage();
+}
+
+function deleteActiveMail(){
+  if (!activeMailId) return;
+  mails = mails.filter(x => x.id !== activeMailId);
+  activeMailId = null;
+  saveStorage();
+  renderMailPage();
+}
 
   function seedTasks(){
   return [
@@ -2170,13 +2407,20 @@ function openSalaryStatement(){
   }
 
   function openPage(pageId) {
-  const safePages = ["page-lessons", "page-profile", "page-leads", "page-chat", "page-student"];
+  const safePages = [
+    "page-lessons",
+    "page-profile",
+    "page-leads",
+    "page-chat",
+    "page-student",
+    "page-mail"
+  ];
 
-  currentPageId = safePages.includes(pageId) ? pageId : "page-lessons";
+  const realPageId = safePages.includes(pageId) ? pageId : "page-lessons";
+  currentPageId = realPageId;
 
   pages.forEach(p => p.classList.remove("is-active"));
 
-  const realPageId = safePages.includes(pageId) ? pageId : "page-lessons";
   const target = document.getElementById(realPageId);
   if (target) target.classList.add("is-active");
 
@@ -2196,6 +2440,15 @@ function openSalaryStatement(){
 
   if (realPageId === "page-leads") {
     renderLeadsStudentsPage();
+  }
+
+  if (realPageId === "page-chat") {
+  if (typeof renderChatContacts === "function") renderChatContacts();
+  if (typeof renderChatRoom === "function") renderChatRoom();
+}
+
+  if (realPageId === "page-mail") {
+    renderMailPage();
   }
 
   saveStorage();
@@ -2288,6 +2541,29 @@ on(addLeadBtn, "click", () => {
   if (leadsTab === "students") openPersonModal({ kind:"student" });
   else openPersonModal({ kind:"lead" });
 });
+
+on(mailSearchInput, "input", () => {
+  mailSearch = mailSearchInput.value || "";
+  saveStorage();
+  renderMailPage();
+});
+
+mailFilterButtons.forEach(btn => {
+  on(btn, "click", () => {
+    mailFilter = btn.dataset.mailFilter || "all";
+    saveStorage();
+    renderMailPage();
+  });
+});
+
+on(mailRefreshBtn, "click", () => {
+  renderMailPage();
+});
+
+on(mailMarkReadBtn, "click", () => updateActiveMailStatus("read"));
+on(mailInWorkBtn, "click", () => updateActiveMailStatus("in_progress"));
+on(mailSpamBtn, "click", () => updateActiveMailStatus("spam"));
+on(mailDeleteBtn, "click", deleteActiveMail);
 
 on(leadSaveBtn, "click", upsertLeadFromForm);
 on(leadDeleteBtn, "click", deleteLead);

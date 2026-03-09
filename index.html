@@ -31,6 +31,13 @@
   <button class="nav__item" type="button" data-page="page-chat">
     <span class="nav__icon">💬</span> Внутрішній чат
   </button>
+
+  <button class="nav__item" type="button" data-page="page-mail">
+  <span class="nav__icon">✉️</span>
+  <span>Пошта</span>
+  <span id="mailNavBadge" class="nav-badge">0</span>
+</button>
+
 </nav>
     </aside>
 
@@ -302,6 +309,72 @@
 </div>
     </div>
   </section>
+
+  <section id="page-mail" class="page">
+  <div class="mail-page">
+    <div class="mail-sidebar card">
+      <div class="mail-sidebar__head">
+        <div class="mail-title">Пошта</div>
+        <button id="mailRefreshBtn" class="btn btn-ghost btn-sm">Оновити</button>
+      </div>
+
+      <div class="mail-filters">
+        <button class="mail-filter is-active" data-mail-filter="all">Усі</button>
+        <button class="mail-filter" data-mail-filter="new">Нові</button>
+        <button class="mail-filter" data-mail-filter="read">Прочитані</button>
+        <button class="mail-filter" data-mail-filter="in_progress">В роботі</button>
+        <button class="mail-filter" data-mail-filter="spam">Спам</button>
+      </div>
+
+      <div class="mail-search-wrap">
+        <input id="mailSearchInput" class="chat__search" placeholder="Пошук повідомлень..." />
+      </div>
+
+      <div id="mailList" class="mail-list"></div>
+    </div>
+
+    <div class="mail-view card">
+      <div id="mailEmpty" class="chat__empty">
+        <div>
+          <div style="font-weight:950; margin-bottom:6px;">Виберіть повідомлення</div>
+          <div class="muted">Тут відкриється повний текст заявки із сайту</div>
+        </div>
+      </div>
+
+      <div id="mailContent" style="display:none;">
+        <div class="mail-view__head">
+          <div>
+            <div id="mailSubject" class="mail-view__subject">—</div>
+            <div id="mailMeta" class="mail-view__meta">—</div>
+          </div>
+
+          <div class="mail-view__actions">
+            <button id="mailMarkReadBtn" class="btn btn-ghost btn-sm">Прочитано</button>
+            <button id="mailInWorkBtn" class="btn btn-ghost btn-sm">В роботу</button>
+            <button id="mailSpamBtn" class="btn btn-ghost btn-sm">Спам</button>
+            <button id="mailDeleteBtn" class="btn btn-ghost btn-sm">Видалити</button>
+          </div>
+        </div>
+
+        <div class="mail-view__body">
+          <div class="mail-kv">
+            <div class="mail-kv__row"><span>Ім’я:</span><b id="mailName">—</b></div>
+            <div class="mail-kv__row"><span>Телефон:</span><b id="mailPhone">—</b></div>
+            <div class="mail-kv__row"><span>Email:</span><b id="mailEmail">—</b></div>
+            <div class="mail-kv__row"><span>Вік дитини:</span><b id="mailAge">—</b></div>
+            <div class="mail-kv__row"><span>Тип:</span><b id="mailType">—</b></div>
+            <div class="mail-kv__row"><span>Дата:</span><b id="mailDate">—</b></div>
+          </div>
+
+          <div class="mail-message">
+            <div class="mail-message__title">Повідомлення</div>
+            <div id="mailText" class="mail-message__text">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 </section>
     </main>
   </div>
