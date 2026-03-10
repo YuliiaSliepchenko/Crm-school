@@ -231,6 +231,7 @@ const mailDeleteBtn = $("#mailDeleteBtn");
 const mailFilterButtons = document.querySelectorAll("[data-mail-filter]");
 
 const mailNavBadge = $("#mailNavBadge");
+const mailCreateLeadBtn = $("#mailCreateLeadBtn");
 
   // ---------------- Utils ----------------
   function isoToday() {
@@ -989,6 +990,39 @@ function renderProfileHeader(){
     };
   }
 
+  function createLeadFromActiveMail(){
+  const m = mails.find(x => x.id === activeMailId);
+  if (!m) return;
+
+  const exists = leads.some(x =>
+    norm(x.phone) === norm(m.phone) ||
+    (norm(x.name) === norm(m.name) && norm(x.email) === norm(m.email))
+  );
+
+  if (exists) {
+    alert("Такий лід уже є 🙂");
+    return;
+  }
+
+  leads.push({
+    id: "lead_" + uid(),
+    name: m.name || "Без імені",
+    phone: m.phone || "",
+    source: "Форма сайту",
+    note: `Email: ${m.email || "—"} | Вік дитини: ${m.childAge || "—"} | ${m.message || ""}`,
+    ts: Date.now()
+  });
+
+  m.status = "in_progress";
+  m.isRead = true;
+
+  saveStorage();
+  renderMailPage();
+  renderLeadsStudentsPage();
+
+  alert("Ліда створено ✅");
+}
+
   function seedLessons() {
     const t = isoToday();
     return [
@@ -1002,45 +1036,31 @@ function renderProfileHeader(){
   return [
     {
       id: "mail_" + uid(),
-      name: "Олена Мельник",
-      phone: "+380991112233",
-      email: "test1@gmail.com",
+      name: "Юлія",
+      phone: "+380677173203",
+      email: "slepajuli@gmail.com",
       childAge: "10",
-      subject: "Пробний урок з Roblox",
+      subject: "Пробний урок",
       formType: "trial_lesson",
-      message: "Добрий день! Хочу записати дитину на пробний урок з Roblox. Цікавить вечірній час.",
+      message: "Привіт! Хочу записати дитину на пробний урок.",
       status: "new",
       isRead: false,
       source: "Formspree / site",
-      createdAt: Date.now() - 1000 * 60 * 15
+      createdAt: Date.now() - 1000 * 60 * 20
     },
     {
       id: "mail_" + uid(),
-      name: "Ірина Коваленко",
-      phone: "+380671234567",
-      email: "test2@gmail.com",
-      childAge: "8",
-      subject: "Запит по курсу AI",
+      name: "Олена Мельник",
+      phone: "+380991112233",
+      email: "test1@gmail.com",
+      childAge: "12",
+      subject: "Курс Roblox",
       formType: "course_question",
-      message: "Підкажіть, будь ласка, чи підійде курс ШІ для дитини 8 років?",
+      message: "Добрий день! Цікавить курс Roblox, підкажіть вартість та графік.",
       status: "in_progress",
       isRead: true,
       source: "Formspree / site",
-      createdAt: Date.now() - 1000 * 60 * 60 * 3
-    },
-    {
-      id: "mail_" + uid(),
-      name: "Spam Test",
-      phone: "",
-      email: "spam@spam.com",
-      childAge: "",
-      subject: "Реклама послуг",
-      formType: "other",
-      message: "Небажане повідомлення.",
-      status: "spam",
-      isRead: true,
-      source: "Other",
-      createdAt: Date.now() - 1000 * 60 * 60 * 8
+      createdAt: Date.now() - 1000 * 60 * 90
     }
   ];
 }
@@ -1075,6 +1095,23 @@ function filteredMails(){
       return hay.includes(q);
     })
     .sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function renderMailNavBadge(){
+  const mailNavBtn = document.querySelector('.nav__item[data-page="page-mail"]');
+  if (!mailNavBtn) return;
+
+  let badge = mailNavBtn.querySelector(".nav-mail-badge");
+  const count = (mails || []).filter(m => m.status === "new").length;
+
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "nav-mail-badge";
+    mailNavBtn.appendChild(badge);
+  }
+
+  badge.textContent = count;
+  badge.style.display = count > 0 ? "inline-flex" : "none";
 }
 
 function renderMailList(){
@@ -1171,6 +1208,7 @@ function renderMailPage(){
   renderMailFilters();
   renderMailList();
   renderMailContent();
+  renderMailNavBadge();
 }
 
 function updateActiveMailStatus(status){
@@ -2079,6 +2117,7 @@ function rerenderAll() {
   renderProfileHeader();
   applyUIToControls();
   setActiveIcons();
+  renderMailNavBadge();
   
 
   // календарні види
@@ -2416,38 +2455,37 @@ function openSalaryStatement(){
     "page-mail"
   ];
 
-  const realPageId = safePages.includes(pageId) ? pageId : "page-lessons";
-  currentPageId = realPageId;
+  currentPageId = safePages.includes(pageId) ? pageId : "page-lessons";
 
   pages.forEach(p => p.classList.remove("is-active"));
 
-  const target = document.getElementById(realPageId);
+  const target = document.getElementById(currentPageId);
   if (target) target.classList.add("is-active");
 
   document.querySelectorAll(".nav__item").forEach(a => a.classList.remove("active"));
-  document.querySelectorAll(`.nav__item[data-page="${realPageId}"]`).forEach(a => a.classList.add("active"));
+  document.querySelectorAll(`.nav__item[data-page="${currentPageId}"]`).forEach(a => a.classList.add("active"));
 
-  if (realPageId === "page-lessons") {
+  if (currentPageId === "page-lessons") {
     setMode(ui.mode || "calendar");
     setView(ui.view || "day");
     rerenderAll();
   }
 
-  if (realPageId === "page-profile") {
+  if (currentPageId === "page-profile") {
     renderProfileHeader();
     renderProfile();
   }
 
-  if (realPageId === "page-leads") {
+  if (currentPageId === "page-leads") {
     renderLeadsStudentsPage();
   }
 
-  if (realPageId === "page-chat") {
-  if (typeof renderChatContacts === "function") renderChatContacts();
-  if (typeof renderChatRoom === "function") renderChatRoom();
-}
+  if (currentPageId === "page-chat") {
+    if (typeof renderChatContacts === "function") renderChatContacts();
+    if (typeof renderChatRoom === "function") renderChatRoom();
+  }
 
-  if (realPageId === "page-mail") {
+  if (currentPageId === "page-mail") {
     renderMailPage();
   }
 
@@ -2530,6 +2568,8 @@ on(tabStudentsBtn, "click", () => {
 // profile reports
 on(btnDoneRegister, "click", openDoneRegister);
 on(btnSalaryStatement, "click", openSalaryStatement);
+
+on(mailCreateLeadBtn, "click", createLeadFromActiveMail);
 
 // close report modal
 on(reportModal, "click", (e) => {

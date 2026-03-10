@@ -1470,3 +1470,18 @@ a{ color:inherit; text-decoration:none; }
 .nav-badge.is-hidden{
   display:none;
 }
+
+.nav-mail-badge{
+  margin-left:auto;
+  min-width:20px;
+  height:20px;
+  padding:0 6px;
+  border-radius:999px;
+  background:#ef4444;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
