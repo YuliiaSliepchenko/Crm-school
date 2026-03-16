@@ -15,6 +15,7 @@
   const LEADS_KEY = "skilled_crm_leads_v1";
   const STUDENTS_KEY = "skilled_crm_students_v1";
   const MAIL_KEY = "skilled_crm_mail_v1";
+  const SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyvRJm134vqSVpPM7pXx11q0kqdZdRAF9D8goMKxTFDcjGfd5uruS6IRTcdAg9uCQ9UTg/exec";
 
   const DAY_START = 7 * 60;   // 07:00
   const DAY_END = 21 * 60;    // 21:00
@@ -1065,8 +1066,64 @@ function renderProfileHeader(){
   ];
 }
 
+async function fetchMailsFromSheet() {
+  try {
+    const res = await fetch(SHEET_WEB_APP_URL + '?t=' + Date.now());
+    const rows = await res.json();
+
+    if (!Array.isArray(rows)) return;
+
+    const serverMails = rows.map((row, index) => {
+      const createdTs = row.createdAt ? new Date(row.createdAt).getTime() : Date.now();
+
+      return {
+  id: "sheet_" + index + "_" + createdTs,
+  name: String(row.name || row.user_name || "Без імені").trim(),
+  phone: String(
+    row.phone ??
+    row.Phone ??
+    row.user_phone ??
+    row["phone "] ??
+    row[" phone"] ??
+    ""
+  ).trim(),
+  email: String(row.email || row.user_mail || "").trim(),
+  childAge: String(row.childAge || row.age || row.user_age || "").trim(),
+  subject: String(row.subject || "Заявка з основного сайту").trim(),
+  formType: String(row.subject || "Заявка з основного сайту").trim(),
+  message: String(row.message || row.user_text || "").trim(),
+  status: String(row.status || "new").trim(),
+  isRead: String(row.status || "new").trim() !== "new",
+  source: "Formspree / site",
+  createdAt: createdTs
+};
+    });
+
+    const oldStatuses = new Map((mails || []).map(m => [m.id, m.status]));
+
+    mails = serverMails.map(m => ({
+      ...m,
+      status: oldStatuses.get(m.id) || m.status,
+      isRead: (oldStatuses.get(m.id) || m.status) !== "new"
+    }));
+
+    if (!activeMailId && mails.length) {
+      activeMailId = mails[0].id;
+    }
+
+    saveStorage();
+    renderMailPage();
+
+  } catch (err) {
+    console.error("fetchMailsFromSheet error:", err);
+  }
+}
+
 function formatMailDate(ts){
-  return new Date(ts).toLocaleString("uk-UA", {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return String(ts || "—");
+
+  return d.toLocaleString("uk-UA", {
     day: "2-digit",
     month: "2-digit",
     hour: "2-digit",
@@ -2485,9 +2542,9 @@ function openSalaryStatement(){
     if (typeof renderChatRoom === "function") renderChatRoom();
   }
 
-  if (currentPageId === "page-mail") {
-    renderMailPage();
-  }
+  if (realPageId === "page-mail") {
+  fetchMailsFromSheet();
+}
 
   saveStorage();
 }
@@ -2596,9 +2653,7 @@ mailFilterButtons.forEach(btn => {
   });
 });
 
-on(mailRefreshBtn, "click", () => {
-  renderMailPage();
-});
+on(mailRefreshBtn, "click", fetchMailsFromSheet);
 
 on(mailMarkReadBtn, "click", () => updateActiveMailStatus("read"));
 on(mailInWorkBtn, "click", () => updateActiveMailStatus("in_progress"));
@@ -3058,6 +3113,8 @@ on(studentAddLessonBtn, "click", () => {
   setView(ui.view || "day");
   applyUIToControls();
 
+  fetchMailsFromSheet();
+  setInterval(fetchMailsFromSheet, 15000);
   openPage(currentPageId || "page-lessons");
 }
 
