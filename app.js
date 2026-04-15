@@ -1073,35 +1073,37 @@ async function fetchMailsFromSheet() {
 
     if (!Array.isArray(rows)) return;
 
-    const serverMails = rows.map((row, index) => {
+    const serverMails = rows.map((row) => {
       const createdTs = row.createdAt ? new Date(row.createdAt).getTime() : Date.now();
 
       return {
-  id: "sheet_" + index + "_" + createdTs,
-  name: String(row.name || row.user_name || "Без імені").trim(),
-  phone: String(
-    row.phone ??
-    row.Phone ??
-    row.user_phone ??
-    row["phone "] ??
-    row[" phone"] ??
-    ""
-  ).trim(),
-  email: String(row.email || row.user_mail || "").trim(),
-  childAge: String(row.childAge || row.age || row.user_age || "").trim(),
-  subject: String(row.subject || "Заявка з основного сайту").trim(),
-  formType: String(row.subject || "Заявка з основного сайту").trim(),
-  message: String(row.message || row.user_text || "").trim(),
-  status: String(row.status || "new").trim(),
-  isRead: String(row.status || "new").trim() !== "new",
-  source: "Formspree / site",
-  createdAt: createdTs
-};
+        id: String(row.sessionId || createdTs),
+        sessionId: row.sessionId && row.sessionId !== ""
+  ? String(row.sessionId)
+  : "chat_" + new Date(row.createdAt).getTime(),
+        name: String(row.name || "Без імені").trim(),
+        phone: String(row.phone || "").trim(),
+        email: String(row.email || "").trim(),
+        childAge: String(row.childAge || "").trim(),
+        subject: String(row.subject || "Заявка").trim(),
+        message: String(row.message || "").trim(),
+        status: String(row.status || "new").trim(),
+        isRead: String(row.status || "new") !== "new",
+        createdAt: createdTs
+      };
     });
 
+    // 🔥 ФІЛЬТР deleted
+    const filtered = serverMails.filter(m => 
+  m.status !== "deleted" &&
+  m.message &&
+  m.message.trim() !== ""
+);
+
+    // 🔥 зберігаємо старі статуси
     const oldStatuses = new Map((mails || []).map(m => [m.id, m.status]));
 
-    mails = serverMails.map(m => ({
+    mails = filtered.map(m => ({
       ...m,
       status: oldStatuses.get(m.id) || m.status,
       isRead: (oldStatuses.get(m.id) || m.status) !== "new"
@@ -2402,20 +2404,46 @@ function openSalaryStatement(){
     closeModal();
   }
 
-  function deleteSelected() {
-    if (!selectedId) return;
-    const l = lessons.find(x => x.id === selectedId);
-    if (!l) return;
-
-    const ok = confirm(`Видалити урок "${l.subject}"?`);
-    if (!ok) return;
-
-    lessons = lessons.filter(x => x.id !== selectedId);
-    selectedId = null;
-    saveStorage();
-    rerenderAll();
-    closeModal();
+  async function deleteSelected() {
+  if (!selectedMail) {
+    alert("Не вибрано чат");
+    return;
   }
+
+  const sessionId = selectedMail.sessionId;
+
+  if (!sessionId) {
+    alert("Нема sessionId");
+    return;
+  }
+
+  if (!confirm("Видалити чат?")) return;
+
+  try {
+    const res = await fetch("https://script.google.com/macros/s/AKfycbyvRJm134vqSVpPM7pXx11q0kqdZdRAF9D8goMKxTFDcjGfd5uruS6IRTcdAg9uCQ9UTg/exec", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "delete",
+        sessionId: sessionId
+      })
+    });
+
+    const data = await res.json();
+
+    console.log("DELETE RESULT:", data);
+
+    // видаляємо з CRM
+    mails = mails.filter(m => m.sessionId !== sessionId);
+
+    selectedMail = null;
+
+    renderMails();
+
+  } catch (e) {
+    console.error(e);
+    alert("Помилка delete");
+  }
+}
 
   // ---------------- Drag & drop ----------------
   function onDragStart(e) {
@@ -2542,7 +2570,7 @@ function openSalaryStatement(){
     if (typeof renderChatRoom === "function") renderChatRoom();
   }
 
-  if (realPageId === "page-mail") {
+  if (currentPageId === "page-mail") {
   fetchMailsFromSheet();
 }
 
