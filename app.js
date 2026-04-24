@@ -286,7 +286,7 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
   }
 
   function uid() {
-    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+    return Math.random().toString(36).substring(2, 6).toUpperCase();
   }
 
   function norm(s) {
@@ -1077,12 +1077,17 @@ async function fetchMailsFromSheet() {
       const createdTs = row.createdAt ? new Date(row.createdAt).getTime() : Date.now();
 
       return {
-        id: String(row.sessionId || createdTs),
+        id: "mail_" + String(row.sessionId),
         sessionId: row.sessionId && row.sessionId !== ""
   ? String(row.sessionId)
   : "chat_" + new Date(row.createdAt).getTime(),
         name: String(row.name || "Без імені").trim(),
-        phone: String(row.phone || "").trim(),
+        phone: String(
+  row.phone ||
+  row.Phone ||
+  row["phone "] ||
+  ""
+).trim(),
         email: String(row.email || "").trim(),
         childAge: String(row.childAge || "").trim(),
         subject: String(row.subject || "Заявка").trim(),
@@ -1100,14 +1105,55 @@ async function fetchMailsFromSheet() {
   m.message.trim() !== ""
 );
 
-    // 🔥 зберігаємо старі статуси
-    const oldStatuses = new Map((mails || []).map(m => [m.id, m.status]));
+// 🔥 ГРУПУЄМО ПО sessionId (щоб не було дублювань)
+const grouped = Object.values(
+  filtered.reduce((acc, m) => {
+    if (!acc[m.sessionId]) {
+      acc[m.sessionId] = { ...m };
+    } else {
+      // беремо найновіше повідомлення
+      if (m.createdAt > acc[m.sessionId].createdAt) {
+        acc[m.sessionId] = { ...m };
+      }
+    }
+    return acc;
+  }, {})
+);
 
-    mails = filtered.map(m => ({
+    // 🔥 зберігаємо старі статуси
+    const oldMap = new Map(
+  (mails || []).map(m => [
+    m.sessionId || m.id, // 🔥 fallback
+    m
+  ])
+);
+
+const newMails = [];
+
+for (const m of grouped) {
+  const old = mails.find(x => x.sessionId === m.sessionId);
+
+  if (old) {
+    // 🔥 ОНОВЛЮЄМО існуючий чат
+    newMails.push({
+      ...old,
       ...m,
-      status: oldStatuses.get(m.id) || m.status,
-      isRead: (oldStatuses.get(m.id) || m.status) !== "new"
-    }));
+      id: old.id, // залишаємо старий id
+      status: old.status, // не ламаємо статус
+      isRead: old.isRead
+    });
+  } else {
+    // 🆕 новий чат
+    newMails.push({
+      ...m,
+      id: "mail_" + m.sessionId,
+      status: m.status || "new",
+      isRead: false
+    });
+  }
+}
+
+mails = newMails;
 
     if (!activeMailId && mails.length) {
       activeMailId = mails[0].id;
@@ -1195,7 +1241,11 @@ function renderMailList(){
         <div class="mail-item__name">${escapeHtml(m.name || "Без імені")}</div>
         <div class="mail-item__date">${formatMailDate(m.createdAt)}</div>
       </div>
-      <div class="mail-item__subject">${escapeHtml(m.subject || "Без теми")} ${mailStatusBadge(m.status)}</div>
+      <div class="mail-item__subject">
+  ${"CHAT-" + (m.sessionId ? m.sessionId.slice(-4) : "0000")} • 
+  ${escapeHtml(m.subject || "Без теми")} 
+  ${mailStatusBadge(m.status)}
+</div>
       <div class="mail-item__snippet">${escapeHtml((m.message || "").slice(0, 90))}${(m.message || "").length > 90 ? "..." : ""}</div>
     `;
 
@@ -2681,7 +2731,17 @@ mailFilterButtons.forEach(btn => {
   });
 });
 
-on(mailRefreshBtn, "click", fetchMailsFromSheet);
+on(mailRefreshBtn, "click", async () => {
+
+  mailRefreshBtn.disabled = true;
+  mailRefreshBtn.textContent = "⏳";
+
+  await fetchMailsFromSheet();
+
+  mailRefreshBtn.disabled = false;
+  mailRefreshBtn.textContent = "Оновити";
+
+});
 
 on(mailMarkReadBtn, "click", () => updateActiveMailStatus("read"));
 on(mailInWorkBtn, "click", () => updateActiveMailStatus("in_progress"));
@@ -3142,7 +3202,6 @@ on(studentAddLessonBtn, "click", () => {
   applyUIToControls();
 
   fetchMailsFromSheet();
-  setInterval(fetchMailsFromSheet, 15000);
   openPage(currentPageId || "page-lessons");
 }
 
