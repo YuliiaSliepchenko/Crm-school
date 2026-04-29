@@ -15,6 +15,7 @@
   const LEADS_KEY = "skilled_crm_leads_v1";
   const STUDENTS_KEY = "skilled_crm_students_v1";
   const MAIL_KEY = "skilled_crm_mail_v1";
+  const TEACHERS_KEY = "crm_teachers_v1";
   const SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyvRJm134vqSVpPM7pXx11q0kqdZdRAF9D8goMKxTFDcjGfd5uruS6IRTcdAg9uCQ9UTg/exec";
 
   const DAY_START = 7 * 60;   // 07:00
@@ -69,7 +70,16 @@ const ME = { id: "teacher_platonova", name: "Платонова Юлія" };
 
 // демо список вчителів (ти потім відредагуєш)
 const TEACHERS = [
-  { id:"teacher_platonova", name:"Платонова Юлія" },
+  {
+    id: "teacher_platonova",
+    name: "Платонова Юлія",
+    phone: "+380000000000",
+    email: "test@gmail.com",
+    specialization: "Roblox / Python / AI",
+    type: "Індивідуальні + групові",
+    rate: "200 грн",
+    status: "Активний"
+  },
   { id:"teacher_ivan", name:"Соболєв Тарас" },
   { id:"teacher_olena", name:"Коваленко Олена" },
 ];
@@ -317,6 +327,7 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
   localStorage.setItem(LEADS_KEY, JSON.stringify(leads));
   localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
+  localStorage.setItem(TEACHERS_KEY, JSON.stringify(TEACHERS));
   localStorage.setItem(MAIL_KEY, JSON.stringify({ mails, activeMailId, mailFilter, mailSearch }));
 }
 
@@ -327,6 +338,14 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
     } catch {
       lessons = seedLessons();
     }
+
+    try {
+  const rawTeachers = localStorage.getItem(TEACHERS_KEY);
+  if (rawTeachers) {
+    TEACHERS.length = 0;
+    TEACHERS.push(...JSON.parse(rawTeachers));
+  }
+} catch {}
 
     try {
   const rawUI = localStorage.getItem(UI_KEY);
@@ -2227,6 +2246,7 @@ function rerenderAll() {
   applyUIToControls();
   setActiveIcons();
   renderMailNavBadge();
+  renderTeacherProfile();
   
 
   // календарні види
@@ -3211,5 +3231,96 @@ on(studentAddLessonBtn, "click", () => {
   } else {
     init();
   }
+
+  // ===== TEACHER BUTTONS FIXED =====
+
+const editTeacherBtn = document.getElementById("editTeacherBtn");
+const deleteTeacherBtn = document.getElementById("deleteTeacherBtn");
+const addTeacherBtn = document.getElementById("addTeacherBtn");
+
+// РЕДАГУВАТИ
+if (editTeacherBtn) {
+  editTeacherBtn.addEventListener("click", () => {
+    const name = prompt("Нове ім'я викладача:");
+    if (!name) return;
+
+    // знайти викладача
+    const t = TEACHERS.find(t => t.name === currentTeacher);
+    if (!t) return;
+
+    // змінити ім'я
+    t.name = name;
+
+    // оновити всі уроки
+    lessons = lessons.map(l =>
+      l.teacher === currentTeacher
+        ? { ...l, teacher: name }
+        : l
+    );
+
+    currentTeacher = name;
+
+    saveStorage();
+    rerenderAll();
+  });
+}
+
+// ВИДАЛИТИ
+if (deleteTeacherBtn) {
+  deleteTeacherBtn.addEventListener("click", () => {
+    const ok = confirm("Видалити викладача?");
+    if (!ok) return;
+
+    // видалити з TEACHERS
+    const index = TEACHERS.findIndex(t => t.name === currentTeacher);
+    if (index !== -1) {
+      TEACHERS.splice(index, 1);
+    }
+
+    // видалити всі уроки цього викладача
+    lessons = lessons.filter(l => l.teacher !== currentTeacher);
+
+    currentTeacher = "";
+
+    saveStorage();
+    rerenderAll();
+  });
+}
+
+// ДОДАТИ
+if (addTeacherBtn) {
+  addTeacherBtn.addEventListener("click", () => {
+    const name = prompt("Ім'я нового викладача:");
+    if (!name) return;
+
+    // перевірка дубля
+    const exists = TEACHERS.some(t => t.name === name);
+    if (exists) {
+      alert("Такий викладач вже є");
+      return;
+    }
+
+    TEACHERS.push({
+      id: "teacher_" + uid(),
+      name: name
+    });
+
+    currentTeacher = name;
+
+    saveStorage();
+    rerenderAll();
+  });
+}
+
+function renderTeacherProfile() {
+  const t = TEACHERS.find(t => t.name === currentTeacher);
+  if (!t) return;
+
+  document.getElementById("teacherPhone").textContent = t.phone || "—";
+  document.getElementById("teacherEmail").textContent = t.email || "—";
+  document.getElementById("teacherSpec").textContent = t.specialization || "—";
+  document.getElementById("teacherType").textContent = t.type || "—";
+  document.getElementById("teacherRate").textContent = t.rate || "—";
+}
 
 })();
