@@ -80,7 +80,7 @@ const TEACHERS = [
     rate: "200 грн",
     status: "Активний"
   },
-  { id:"teacher_ivan", name:"Соболєв Тарас" },
+  { id:"teacher_taras", name:"Соболєв Тарас" },
   { id:"teacher_olena", name:"Коваленко Олена" },
 ];
 
@@ -3238,32 +3238,7 @@ const editTeacherBtn = document.getElementById("editTeacherBtn");
 const deleteTeacherBtn = document.getElementById("deleteTeacherBtn");
 const addTeacherBtn = document.getElementById("addTeacherBtn");
 
-// РЕДАГУВАТИ
-if (editTeacherBtn) {
-  editTeacherBtn.addEventListener("click", () => {
-    const name = prompt("Нове ім'я викладача:");
-    if (!name) return;
 
-    // знайти викладача
-    const t = TEACHERS.find(t => t.name === currentTeacher);
-    if (!t) return;
-
-    // змінити ім'я
-    t.name = name;
-
-    // оновити всі уроки
-    lessons = lessons.map(l =>
-      l.teacher === currentTeacher
-        ? { ...l, teacher: name }
-        : l
-    );
-
-    currentTeacher = name;
-
-    saveStorage();
-    rerenderAll();
-  });
-}
 
 // ВИДАЛИТИ
 if (deleteTeacherBtn) {
@@ -3321,6 +3296,68 @@ function renderTeacherProfile() {
   document.getElementById("teacherSpec").textContent = t.specialization || "—";
   document.getElementById("teacherType").textContent = t.type || "—";
   document.getElementById("teacherRate").textContent = t.rate || "—";
+}
+
+// ===== TEACHER MODAL FULL LOGIC =====
+
+const teacherModal = document.getElementById("teacherModal");
+const saveTeacherBtn = document.getElementById("saveTeacherBtn");
+
+const tId = document.getElementById("tId");
+const tPhone = document.getElementById("tPhone");
+const tEmail = document.getElementById("tEmail");
+const tSpec = document.getElementById("tSpec");
+const tType = document.getElementById("tType");
+const tRate = document.getElementById("tRate");
+
+// ВІДКРИТИ МОДАЛКУ
+if (editTeacherBtn) {
+  editTeacherBtn.addEventListener("click", () => {
+    const t = TEACHERS.find(t => t.name === currentTeacher);
+    if (!t) return;
+
+    tId.value = t.id || "";
+    tPhone.value = t.phone || "";
+    tEmail.value = t.email || "";
+    tSpec.value = t.specialization || "";
+    tType.value = t.type || "";
+    tRate.value = t.rate || "";
+
+    teacherModal.classList.add("is-open");
+  });
+}
+
+// ЗАКРИТИ (ХРЕСТИК + backdrop)
+teacherModal.addEventListener("click", (e) => {
+  if (e.target.dataset.close === "1") {
+    teacherModal.classList.remove("is-open");
+  }
+});
+
+// ESC
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    teacherModal.classList.remove("is-open");
+  }
+});
+
+// ЗБЕРЕГТИ
+if (saveTeacherBtn) {
+  saveTeacherBtn.addEventListener("click", () => {
+    const t = TEACHERS.find(t => t.name === currentTeacher);
+    if (!t) return;
+
+    t.phone = tPhone.value;
+    t.email = tEmail.value;
+    t.specialization = tSpec.value;
+    t.type = tType.value;
+    t.rate = tRate.value;
+
+    saveStorage();
+    renderTeacherProfile();
+
+    teacherModal.classList.remove("is-open");
+  });
 }
 
 })();
