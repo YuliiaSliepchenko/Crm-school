@@ -2553,12 +2553,13 @@ function openSalaryStatement(){
 
   // ---------------- View switching + navigation ----------------
   function setView(v) {
-    ui.view = v;
-    if (v === "month" && tabMonth) tabMonth.checked = true;
-    if (v === "week" && tabWeek) tabWeek.checked = true;
-    if (v === "day" && tabDay) tabDay.checked = true;
-    saveStorage();
-  }
+  ui.view = v;
+  if (v === "month" && tabMonth) tabMonth.checked = true;
+  if (v === "week" && tabWeek) tabWeek.checked = true;
+  if (v === "day" && tabDay) tabDay.checked = true;
+  saveStorage();
+  rerenderAll();
+}
 
   function setMode(m){
   ui.mode = m; // calendar | list
