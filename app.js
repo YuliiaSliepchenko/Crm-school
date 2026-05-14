@@ -2453,7 +2453,7 @@ function openSalaryStatement(){
     if (fStart) fStart.value = l.start;
     if (fDur) fDur.value = l.dur;
 
-    if (fSubject) fSubject.value = l.subject;
+    fillSubjectSelect(l.subject);
     if (fTeacher) fTeacher.value = l.teacher;
     if (fType) fType.value = l.type;
     if (fStatus) fStatus.value = l.status;
@@ -2475,7 +2475,7 @@ function openSalaryStatement(){
     if (fStart) fStart.value = "16:00";
     if (fDur) fDur.value = 50;
 
-    if (fSubject) fSubject.value = "";
+    fillSubjectSelect("");
     if (fTeacher) fTeacher.value = getSelectedTeacherName();
     if (fType) fType.value = "Індивідуальний";
     if (fStatus) fStatus.value = "planned";
@@ -3413,6 +3413,28 @@ if (saveTeacherBtn) {
 
     teacherModal.classList.remove("is-open");
   });
+}
+
+function fillSubjectSelect(selected = "") {
+  if (!fSubject) return;
+
+  const list = Array.from(new Set([
+    ...(subjects || []),
+    ...lessons.map(l => l.subject)
+  ]))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "uk"));
+
+  fSubject.innerHTML = `<option value="">Оберіть предмет</option>`;
+
+  for (const s of list) {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    fSubject.appendChild(opt);
+  }
+
+  fSubject.value = selected || "";
 }
 
 })();
