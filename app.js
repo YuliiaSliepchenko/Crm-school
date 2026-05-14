@@ -88,6 +88,10 @@ const TEACHERS = [
   // ---------------- DOM references ----------------
   const searchInput = $("#searchInput");
   const subjectFilter = $("#subjectFilter");
+  const addSubjectBtn = $("#addSubjectBtn");
+const deleteSubjectBtn = $("#deleteSubjectBtn");
+const SUBJECTS_KEY = "skilled_crm_subjects_v1";
+let subjects = [];
   const teacherFilter = $("#teacherFilter");
   const roleSelect = $("#roleSelect");
   const studentNameInput = $("#studentNameInput");
@@ -329,6 +333,7 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
   localStorage.setItem(STUDENTS_KEY, JSON.stringify(students));
   localStorage.setItem(TEACHERS_KEY, JSON.stringify(TEACHERS));
   localStorage.setItem(MAIL_KEY, JSON.stringify({ mails, activeMailId, mailFilter, mailSearch }));
+  localStorage.setItem(SUBJECTS_KEY, JSON.stringify(subjects));
 }
 
   function loadStorage() {
@@ -413,6 +418,17 @@ try {
 } catch {
   chats = {};
   activeChatId = null;
+}
+
+try {
+  const rawSubjects = localStorage.getItem(SUBJECTS_KEY);
+  subjects = rawSubjects ? JSON.parse(rawSubjects) : [];
+} catch {
+  subjects = [];
+}
+
+if (!subjects.length) {
+  subjects = [...new Set(lessons.map(l => l.subject).filter(Boolean))];
 }
   }
 
@@ -975,6 +991,43 @@ function addTaskFlow(){
 
   saveStorage();
   renderTasks();
+}
+
+function addSubjectFlow() {
+  const name = prompt("Назва нового предмета:");
+  if (!name) return;
+
+  const value = name.trim();
+  if (!value) return;
+
+  const exists = (subjects || []).some(s => norm(s) === norm(value));
+  if (exists) {
+    alert("Такий предмет уже є");
+    return;
+  }
+
+  subjects.push(value);
+  saveStorage();
+  rerenderAll();
+}
+
+function deleteSubjectFlow() {
+  const current = subjectFilter?.value || "";
+  if (!current) {
+    alert("Спочатку вибери предмет у списку");
+    return;
+  }
+
+  const ok = confirm(`Видалити предмет "${current}" зі списку?`);
+  if (!ok) return;
+
+  subjects = subjects.filter(s => norm(s) !== norm(current));
+
+  if (ui.subject === current) ui.subject = "";
+  if (subjectFilter) subjectFilter.value = "";
+
+  saveStorage();
+  rerenderAll();
 }
 
 function getSelectedTeacherName(){
@@ -1541,41 +1594,41 @@ function deleteLead(){
 
   // ---------------- UI: filters ----------------
   function renderFiltersOptions() {
-    if (!subjectFilter || !teacherFilter) return;
+  if (!subjectFilter || !teacherFilter) return;
 
-    const subjects = Array.from(new Set(lessons.map(l => l.subject))).sort((a,b)=>a.localeCompare(b,"uk"));
-    const teachers = Array.from(new Set(lessons.map(l => l.teacher).filter(Boolean))).sort((a,b)=>a.localeCompare(b,"uk"));
+  const subjectsList = Array.from(new Set(subjects.filter(Boolean))).sort((a,b)=>a.localeCompare(b,"uk"));
+  const teachers = Array.from(new Set(lessons.map(l => l.teacher).filter(Boolean))).sort((a,b)=>a.localeCompare(b,"uk"));
 
-    subjectFilter.innerHTML = "";
-    teacherFilter.innerHTML = "";
+  subjectFilter.innerHTML = "";
+  teacherFilter.innerHTML = "";
 
-    const opt0s = document.createElement("option");
-    opt0s.value = "";
-    opt0s.textContent = "Усі предмети";
-    subjectFilter.appendChild(opt0s);
+  const opt0s = document.createElement("option");
+  opt0s.value = "";
+  opt0s.textContent = "Усі предмети";
+  subjectFilter.appendChild(opt0s);
 
-    for (const s of subjects) {
-      const opt = document.createElement("option");
-      opt.value = s;          // <-- ВАЖЛИВО: value = реальний рядок, без escape
-      opt.textContent = s;
-      subjectFilter.appendChild(opt);
-    }
-
-    const opt0t = document.createElement("option");
-    opt0t.value = "";
-    opt0t.textContent = "Усі викладачі";
-    teacherFilter.appendChild(opt0t);
-
-    for (const t of teachers) {
-      const opt = document.createElement("option");
-      opt.value = t;          // <-- value = реальний рядок
-      opt.textContent = t;
-      teacherFilter.appendChild(opt);
-    }
-
-    subjectFilter.value = ui.subject || "";
-    teacherFilter.value = ui.teacher || "";
+  for (const s of subjectsList) {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    subjectFilter.appendChild(opt);
   }
+
+  const opt0t = document.createElement("option");
+  opt0t.value = "";
+  opt0t.textContent = "Усі викладачі";
+  teacherFilter.appendChild(opt0t);
+
+  for (const t of teachers) {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    teacherFilter.appendChild(opt);
+  }
+
+  subjectFilter.value = ui.subject || "";
+  teacherFilter.value = ui.teacher || "";
+}
 
   function applyUIToControls() {
     if (searchInput) searchInput.value = ui.search || "";
@@ -2724,7 +2777,8 @@ on(tabStudentsBtn, "click", () => {
 // profile reports
 on(btnDoneRegister, "click", openDoneRegister);
 on(btnSalaryStatement, "click", openSalaryStatement);
-
+on(addSubjectBtn, "click", addSubjectFlow);
+on(deleteSubjectBtn, "click", deleteSubjectFlow);
 on(mailCreateLeadBtn, "click", createLeadFromActiveMail);
 
 // close report modal

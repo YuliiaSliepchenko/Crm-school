@@ -85,9 +85,19 @@
       </div>
 
       <div class="toolbar__right" style="display:flex; gap:10px; align-items:center;">
-        <select id="subjectFilter" class="btn" style="padding:10px 12px;">
-          <option value="">Усі предмети</option>
-        </select>
+        <div style="display:flex; gap:10px; align-items:center;">
+  <select id="subjectFilter" class="btn" style="padding:10px 12px;">
+    <option value="">Усі предмети</option>
+  </select>
+
+  <button id="addSubjectBtn" class="btn btn-ghost" type="button" style="padding:10px 12px;">
+    ➕ Додати предмет
+  </button>
+
+  <button id="deleteSubjectBtn" class="btn btn-ghost" type="button" style="padding:10px 12px; border-color:#fecaca; color:#b91c1c;">
+    🗑 Видалити предмет
+  </button>
+</div>
 
         <select id="teacherFilter" class="btn" style="padding:10px 12px;">
           <option value="">Усі викладачі</option>
