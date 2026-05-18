@@ -14,6 +14,8 @@
   const TASKS_KEY = "skilled_crm_tasks_v1";
   const COURSES_KEY = "skilled_crm_courses_v1";
   let courses = [];
+  const DELETED_MAILS_KEY = "skilled_crm_deleted_mails_v1";
+  let deletedMailKeys = [];
   const LEADS_KEY = "skilled_crm_leads_v1";
   const STUDENTS_KEY = "skilled_crm_students_v1";
   const MAIL_KEY = "skilled_crm_mail_v1";
@@ -558,6 +560,7 @@ function addCourseFlow(studentName) {
   localStorage.setItem(MAIL_KEY, JSON.stringify({ mails, activeMailId, mailFilter, mailSearch }));
   localStorage.setItem(SUBJECTS_KEY, JSON.stringify(subjects));
   localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
+  localStorage.setItem(DELETED_MAILS_KEY, JSON.stringify(deletedMailKeys));
 }
 
   function loadStorage() {
@@ -660,6 +663,13 @@ try {
   courses = rawCourses ? JSON.parse(rawCourses) : [];
 } catch {
   courses = [];
+}
+
+try {
+  const rawDeleted = localStorage.getItem(DELETED_MAILS_KEY);
+  deletedMailKeys = rawDeleted ? JSON.parse(rawDeleted) : [];
+} catch {
+  deletedMailKeys = [];
 }
   }
 
@@ -1402,11 +1412,16 @@ async function fetchMailsFromSheet() {
     });
 
     // 🔥 ФІЛЬТР deleted
-    const filtered = serverMails.filter(m => 
-  m.status !== "deleted" &&
-  m.message &&
-  m.message.trim() !== ""
-);
+    const filtered = serverMails.filter(m => {
+  const key = m.sessionId || m.id;
+
+  return (
+    m.status !== "deleted" &&
+    !deletedMailKeys.includes(key) &&
+    m.message &&
+    m.message.trim() !== ""
+  );
+});
 
 // 🔥 ГРУПУЄМО ПО sessionId (щоб не було дублювань)
 const grouped = Object.values(
@@ -1634,8 +1649,19 @@ function updateActiveMailStatus(status){
 
 function deleteActiveMail(){
   if (!activeMailId) return;
+
+  const m = mails.find(x => x.id === activeMailId);
+  if (!m) return;
+
+  const key = m.sessionId || m.id;
+
+  if (!deletedMailKeys.includes(key)) {
+    deletedMailKeys.push(key);
+  }
+
   mails = mails.filter(x => x.id !== activeMailId);
   activeMailId = null;
+
   saveStorage();
   renderMailPage();
 }
