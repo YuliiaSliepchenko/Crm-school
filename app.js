@@ -12,6 +12,8 @@
   const UI_KEY = "skilled_crm_ui_v2";
   const CHAT_KEY = "skilled_crm_chat_v1";
   const TASKS_KEY = "skilled_crm_tasks_v1";
+  const COURSES_KEY = "skilled_crm_courses_v1";
+  let courses = [];
   const LEADS_KEY = "skilled_crm_leads_v1";
   const STUDENTS_KEY = "skilled_crm_students_v1";
   const MAIL_KEY = "skilled_crm_mail_v1";
@@ -133,6 +135,9 @@ const tasksHint = $("#tasksHint");
 
   const sidebarToggle = $("#sidebarToggle");
   const appRoot = document.querySelector(".app");
+
+  const studentAddCourseBtn = $("#studentAddCourseBtn");
+  const studentCourses = $("#studentCourses");
 
   // profile buttons
 const btnDoneRegister = $("#btnDoneRegister");
@@ -289,9 +294,10 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
   function hhmmToMin(hhmm) {
-    const [h,m] = hhmm.split(":").map(Number);
-    return h*60 + m;
-  }
+  const fixed = normalizeTimeInput(hhmm) || "00:00";
+  const [h, m] = fixed.split(":").map(Number);
+  return h * 60 + m;
+}
 
   function minToHHMM(min) {
     const h = Math.floor(min / 60);
@@ -306,6 +312,26 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
   function norm(s) {
     return String(s || "").trim().toLowerCase();
   }
+
+  function normalizeTimeInput(value) {
+  const raw = String(value || "").trim();
+
+  if (!raw) return "";
+
+  if (/^\d{1,2}$/.test(raw)) {
+    const h = clamp(Number(raw), 0, 23);
+    return `${String(h).padStart(2, "0")}:00`;
+  }
+
+  if (/^\d{1,2}:\d{1,2}$/.test(raw)) {
+    let [h, m] = raw.split(":").map(Number);
+    h = clamp(h, 0, 23);
+    m = clamp(m, 0, 59);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+
+  return "";
+}
 
   function fmtMonthYear(iso) {
     const d = parseISODate(iso);
@@ -323,6 +349,203 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
     };
   }
 
+  function shortDate(iso) {
+  const d = parseISODate(iso);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}.${mm}`;
+}
+
+function weekdayIndexFromText(text) {
+  const t = norm(text);
+  const map = {
+    "пн": 1, "понеділок": 1,
+    "вт": 2, "вівторок": 2,
+    "ср": 3, "середа": 3,
+    "чт": 4, "четвер": 4,
+    "пт": 5, "п'ятниця": 5, "пятниця": 5,
+    "сб": 6, "субота": 6,
+    "нд": 0, "неділя": 0
+  };
+  return map[t] ?? 6;
+}
+
+function nextWeekdayISO(fromISO, weekdayIndex) {
+  const d = parseISODate(fromISO);
+  while (d.getDay() !== weekdayIndex) {
+    d.setDate(d.getDate() + 1);
+  }
+  return toLocalISO(d);
+}
+
+function createCourseLessons(course) {
+  const lessonIds = [];
+  let date = course.startDate;
+
+  for (let i = 0; i < course.totalLessons; i++) {
+    const lesson = mkLesson({
+      date,
+      start: course.start,
+      dur: course.dur,
+      subject: course.subject,
+      students: [course.studentName],
+      teacher: course.teacher,
+      type: "Індивідуальний",
+      status: "planned",
+      courseId: course.id
+    });
+
+    lessons.push(lesson);
+    lessonIds.push(lesson.id);
+    date = addDays(date, 7);
+  }
+
+  course.lessonIds = lessonIds;
+}
+
+function renderStudentCourses(studentName) {
+  const wrap = $("#studentCourses");
+  if (!wrap) return;
+
+  const studentCourses = (courses || []).filter(c => norm(c.studentName) === norm(studentName));
+
+  if (!studentCourses.length) {
+    wrap.innerHTML = `<div class="muted">Курсів поки немає.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = "";
+
+  for (const course of studentCourses) {
+    const courseLessons = lessons
+      .filter(l => l.courseId === course.id)
+      .sort((a, b) => a.date.localeCompare(b.date) || hhmmToMin(a.start) - hhmmToMin(b.start));
+
+    const doneCount = courseLessons.filter(l => ["done", "debt", "free"].includes(l.status)).length;
+    const canceledCount = courseLessons.filter(l => l.status === "cancelled").length;
+    const remainingCount = Math.max(course.totalLessons - doneCount - canceledCount, 0);
+
+    const datesRow = courseLessons
+      .slice(0, 12)
+      .map(l => {
+        return `<span class="course-date course-date--${l.status}">${shortDate(l.date)}${l.status === "cancelled" ? " ✕" : ""}</span>`;
+      })
+      .join("");
+
+    const card = document.createElement("div");
+    card.className = "course-card";
+    card.innerHTML = `
+      <div class="course-card__top">
+        <div>
+          <div class="course-card__title">${escapeHtml(course.subject)}</div>
+          <div class="muted" style="font-weight:800;">
+            ${escapeHtml(course.teacher)} • ${escapeHtml(course.start)} • ${course.dur} хв • ${course.totalLessons} уроків
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+  <div class="course-card__progress">
+    <b>${remainingCount}</b> залишилось
+  </div>
+
+  <button class="btn btn-ghost btn-sm"
+          data-course-del="${course.id}"
+          style="border-color:#fecaca;color:#b91c1c;">
+    🗑 Видалити курс
+  </button>
+</div>
+      </div>
+
+      <div class="course-card__meta">
+        <span class="course-pill">Проведено: ${doneCount}</span>
+        <span class="course-pill">Відмінено: ${canceledCount}</span>
+        <span class="course-pill">Усього: ${course.totalLessons}</span>
+      </div>
+
+      <div class="course-dates">
+        ${datesRow}
+      </div>
+    `;
+
+    wrap.appendChild(card);
+
+    wrap.querySelectorAll("[data-course-del]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const courseId = btn.dataset.courseDel;
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+
+    if (!confirm(`Видалити курс "${course.subject}" разом з усіма уроками?`)) return;
+
+    courses = courses.filter(c => c.id !== courseId);
+    lessons = lessons.filter(l => l.courseId !== courseId);
+
+    saveStorage();
+    rerenderAll();
+    renderStudentPage(studentName);
+  });
+});
+
+  }
+}
+
+function addCourseFlow(studentName) {
+  if (!studentName) {
+    alert("Спочатку відкрий картку учня 🙂");
+    return;
+  }
+
+  const subject = prompt("Назва курсу / предмет:", "Роблокс");
+  if (subject === null || !subject.trim()) return;
+
+  const totalRaw = prompt("Скільки уроків у курсі?", "24");
+  if (totalRaw === null) return;
+  const totalLessons = Number(totalRaw) || 24;
+
+  const weekdayText = prompt("День тижня (пн, вт, ср, чт, пт, сб, нд):", "сб");
+  if (weekdayText === null || !weekdayText.trim()) return;
+
+  const startRaw = prompt("Час початку, наприклад 11 або 11:00:", "09:00");
+  if (startRaw === null) return;
+
+  const start = normalizeTimeInput(startRaw);
+  if (!start) {
+    alert("Час введено неправильно. Наприклад: 11 або 11:00");
+    return;
+  }
+
+  const durRaw = prompt("Тривалість (хв):", "50");
+  if (durRaw === null) return;
+  const dur = Number(durRaw) || 50;
+
+  const teacherRaw = prompt("Викладач:", getSelectedTeacherName());
+  if (teacherRaw === null || !teacherRaw.trim()) return;
+
+  const weekday = weekdayIndexFromText(weekdayText);
+  const startDate = nextWeekdayISO(currentDayISO || isoToday(), weekday);
+
+  const course = {
+    id: "course_" + uid(),
+    studentName,
+    subject: subject.trim(),
+    totalLessons,
+    weekday,
+    weekdayText: weekdayText.trim(),
+    start,
+    dur,
+    teacher: teacherRaw.trim(),
+    startDate,
+    createdAt: Date.now(),
+    lessonIds: []
+  };
+
+  courses.push(course);
+  createCourseLessons(course);
+
+  saveStorage();
+  rerenderAll();
+  renderStudentPage(studentName);
+}
+
   // ---------------- Storage ----------------
   function saveStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lessons));
@@ -334,6 +557,7 @@ const mailCreateLeadBtn = $("#mailCreateLeadBtn");
   localStorage.setItem(TEACHERS_KEY, JSON.stringify(TEACHERS));
   localStorage.setItem(MAIL_KEY, JSON.stringify({ mails, activeMailId, mailFilter, mailSearch }));
   localStorage.setItem(SUBJECTS_KEY, JSON.stringify(subjects));
+  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
 }
 
   function loadStorage() {
@@ -429,6 +653,13 @@ try {
 
 if (!subjects.length) {
   subjects = [...new Set(lessons.map(l => l.subject).filter(Boolean))];
+}
+
+try {
+  const rawCourses = localStorage.getItem(COURSES_KEY);
+  courses = rawCourses ? JSON.parse(rawCourses) : [];
+} catch {
+  courses = [];
 }
   }
 
@@ -1048,21 +1279,21 @@ function renderProfileHeader(){
 }
 
   // ---------------- Data model ----------------
-  function mkLesson({ date, start, dur, subject, students, teacher, type, status, note }) {
-    return {
-      id: uid(),
-      date,
-      start,
-      dur: Number(dur) || 50,
-      subject: subject || "Урок",
-      students: Array.isArray(students) ? students.filter(Boolean) : [],
-      teacher: teacher || "",
-      type: type || "Індивідуальний",
-      status: status || "planned",
-      note: note || "",
-    };
-  }
-
+  function mkLesson({ date, start, dur, subject, students, teacher, type, status, note, courseId = "" }) {
+  return {
+    id: uid(),
+    date,
+    start: normalizeTimeInput(start) || "16:00",
+    dur: Number(dur) || 50,
+    subject: subject || "Урок",
+    students: Array.isArray(students) ? students.filter(Boolean) : [],
+    teacher: teacher || "",
+    type: type || "Індивідуальний",
+    status: status || "planned",
+    note: note || "",
+    courseId
+  };
+}
   function createLeadFromActiveMail(){
   const m = mails.find(x => x.id === activeMailId);
   if (!m) return;
@@ -2115,6 +2346,7 @@ if (studentSchedule){
     `;
   }
 }
+renderStudentCourses(name);
   }
 
   function openStudentPage(name){
@@ -2125,6 +2357,14 @@ if (studentSchedule){
   }
 
   function deleteCurrentStudent(){
+  const removedCourseIds = new Set(
+  (courses || [])
+    .filter(c => norm(c.studentName) === norm(name))
+    .map(c => c.id)
+);
+
+courses = courses.filter(c => norm(c.studentName) !== norm(name));
+lessons = lessons.filter(l => !removedCourseIds.has(l.courseId));
   const name = (studentNameTitle?.textContent || "").trim();
   if (!name) return;
 
@@ -2527,45 +2767,27 @@ function openSalaryStatement(){
     closeModal();
   }
 
-  async function deleteSelected() {
-  if (!selectedMail) {
-    alert("Не вибрано чат");
-    return;
-  }
+  function deleteSelected() {
+  if (!selectedId) return;
 
-  const sessionId = selectedMail.sessionId;
+  const lesson = lessons.find(l => l.id === selectedId);
+  if (!lesson) return;
 
-  if (!sessionId) {
-    alert("Нема sessionId");
-    return;
-  }
+  if (!confirm("Видалити цей урок?")) return;
 
-  if (!confirm("Видалити чат?")) return;
+  lessons = lessons.filter(l => l.id !== selectedId);
 
-  try {
-    const res = await fetch("https://script.google.com/macros/s/AKfycbyvRJm134vqSVpPM7pXx11q0kqdZdRAF9D8goMKxTFDcjGfd5uruS6IRTcdAg9uCQ9UTg/exec", {
-      method: "POST",
-      body: JSON.stringify({
-        action: "delete",
-        sessionId: sessionId
-      })
-    });
+  // якщо урок був частиною курсу — прибираємо його з course.lessonIds
+  courses = courses.map(c => ({
+    ...c,
+    lessonIds: (c.lessonIds || []).filter(id => id !== selectedId)
+  }));
 
-    const data = await res.json();
+  selectedId = null;
 
-    console.log("DELETE RESULT:", data);
-
-    // видаляємо з CRM
-    mails = mails.filter(m => m.sessionId !== sessionId);
-
-    selectedMail = null;
-
-    renderMails();
-
-  } catch (e) {
-    console.error(e);
-    alert("Помилка delete");
-  }
+  saveStorage();
+  rerenderAll();
+  closeModal();
 }
 
   // ---------------- Drag & drop ----------------
@@ -2740,6 +2962,11 @@ on(tabLeadsBtn, "click", () => {
   tabStudentsBtn.classList.add("btn-ghost");
   tabStudentsBtn.classList.remove("btn-primary");
   renderLeadsStudentsPage();
+});
+
+on(studentAddCourseBtn, "click", () => {
+  const name = studentNameTitle?.textContent || "";
+  addCourseFlow(name);
 });
 
 on(tabStudentsBtn, "click", () => {
@@ -3210,10 +3437,17 @@ function sendChatMessage(){
   e.stopPropagation();
 
   const id = studentCardState.lessonId;
-  const l = lessons.find(x => x.id === id);
-  if (!l) return;
+  if (!id) return;
 
-  l.status = "cancelled";
+  if (!confirm("Видалити урок?")) return;
+
+  lessons = lessons.filter(x => x.id !== id);
+
+  courses = courses.map(c => ({
+    ...c,
+    lessonIds: (c.lessonIds || []).filter(lessonId => lessonId !== id)
+  }));
+
   saveStorage();
   rerenderAll();
   closeStudentCard();
