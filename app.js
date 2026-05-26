@@ -19,6 +19,8 @@
   const LEADS_KEY = "skilled_crm_leads_v1";
   const STUDENTS_KEY = "skilled_crm_students_v1";
   const MAIL_KEY = "skilled_crm_mail_v1";
+  const WORK_NOTES_KEY = "skilled_crm_work_notes_v1";
+let workNotes = [];
   const TEACHERS_KEY = "crm_teachers_v1";
   const SHEET_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyvRJm134vqSVpPM7pXx11q0kqdZdRAF9D8goMKxTFDcjGfd5uruS6IRTcdAg9uCQ9UTg/exec";
 
@@ -249,6 +251,15 @@ const mailMarkReadBtn = $("#mailMarkReadBtn");
 const mailInWorkBtn = $("#mailInWorkBtn");
 const mailSpamBtn = $("#mailSpamBtn");
 const mailDeleteBtn = $("#mailDeleteBtn");
+
+const addWorkNoteBtn = $("#addWorkNoteBtn");
+const workNoteType = $("#workNoteType");
+const workNoteTitle = $("#workNoteTitle");
+const workNoteText = $("#workNoteText");
+const workNoteStatus = $("#workNoteStatus");
+const workNoteDeadline = $("#workNoteDeadline");
+const workNoteComment = $("#workNoteComment");
+const workNotesList = $("#workNotesList");
 
 const mailFilterButtons = document.querySelectorAll("[data-mail-filter]");
 
@@ -561,6 +572,7 @@ function addCourseFlow(studentName) {
   localStorage.setItem(SUBJECTS_KEY, JSON.stringify(subjects));
   localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
   localStorage.setItem(DELETED_MAILS_KEY, JSON.stringify(deletedMailKeys));
+  localStorage.setItem(WORK_NOTES_KEY, JSON.stringify(workNotes));
 }
 
   function loadStorage() {
@@ -670,6 +682,13 @@ try {
   deletedMailKeys = rawDeleted ? JSON.parse(rawDeleted) : [];
 } catch {
   deletedMailKeys = [];
+}
+
+try {
+  const rawWorkNotes = localStorage.getItem(WORK_NOTES_KEY);
+  workNotes = rawWorkNotes ? JSON.parse(rawWorkNotes) : [];
+} catch {
+  workNotes = [];
 }
   }
 
@@ -2938,15 +2957,146 @@ function openSalaryStatement(){
   }
 
   if (currentPageId === "page-chat") {
-    if (typeof renderChatContacts === "function") renderChatContacts();
-    if (typeof renderChatRoom === "function") renderChatRoom();
-  }
+  renderWorkNotesPage();
+}
 
   if (currentPageId === "page-mail") {
   fetchMailsFromSheet();
 }
 
   saveStorage();
+}
+
+function renderWorkNotesPage() {
+  if (!workNotesList) return;
+
+  workNotesList.innerHTML = "";
+
+  const list = (workNotes || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+  if (!list.length) {
+    workNotesList.innerHTML = `<div class="muted" style="padding:10px 0;">Поки нотаток і задач немає 🙂</div>`;
+    return;
+  }
+
+  for (const item of list) {
+    const row = document.createElement("div");
+    row.className = "task";
+
+    const label =
+      item.type === "tz" ? "ТЗ" :
+      item.type === "task" ? "Задача" :
+      "Нотатка";
+
+    const statusText =
+      item.type === "note" ? "Нотатка" :
+      item.status === "done" ? "Виконано" :
+      "Не виконано";
+
+    row.innerHTML = `
+      <div class="task__left">
+        <input type="checkbox" ${item.status === "done" ? "checked" : ""} data-work-check="${item.id}" ${item.type === "note" ? "disabled" : ""} />
+        <div>
+          <div class="task__title">${escapeHtml(label)} • ${escapeHtml(item.title || "Без назви")}</div>
+          <div class="task__meta">${escapeHtml(item.text || "—")}</div>
+
+          ${item.type !== "note" ? `
+            <div class="task__meta">
+              Статус: <b>${statusText}</b>
+              ${item.deadline ? ` • Термін: <b>${escapeHtml(item.deadline)}</b>` : ""}
+            </div>
+            ${item.comment ? `<div class="task__meta">Коментар: ${escapeHtml(item.comment)}</div>` : ""}
+          ` : ""}
+        </div>
+      </div>
+
+      <div class="task__right">
+        <button class="task__btn" data-work-comment="${item.id}">💬</button>
+        <button class="task__btn task__btn--danger" data-work-del="${item.id}">🗑</button>
+      </div>
+    `;
+
+    workNotesList.appendChild(row);
+  }
+
+  workNotesList.querySelectorAll("[data-work-check]").forEach(ch => {
+    ch.addEventListener("change", () => {
+      const id = ch.dataset.workCheck;
+      const item = workNotes.find(x => x.id === id);
+      if (!item) return;
+
+      item.status = ch.checked ? "done" : "todo";
+      item.done = ch.checked;
+
+      const reason = prompt(ch.checked ? "Коментар: що виконано?" : "Причина: чому не виконано?", item.comment || "");
+      if (reason !== null) item.comment = reason.trim();
+
+      saveStorage();
+      renderWorkNotesPage();
+    });
+  });
+
+  workNotesList.querySelectorAll("[data-work-comment]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.workComment;
+      const item = workNotes.find(x => x.id === id);
+      if (!item) return;
+
+      const comment = prompt("Коментар / причина:", item.comment || "");
+      if (comment === null) return;
+
+      item.comment = comment.trim();
+      saveStorage();
+      renderWorkNotesPage();
+    });
+  });
+
+  workNotesList.querySelectorAll("[data-work-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.workDel;
+      if (!confirm("Видалити запис?")) return;
+
+      workNotes = workNotes.filter(x => x.id !== id);
+      saveStorage();
+      renderWorkNotesPage();
+    });
+  });
+}
+
+function addWorkNoteFlow() {
+  const type = workNoteType?.value || "note";
+  const title = (workNoteTitle?.value || "").trim();
+  const text = (workNoteText?.value || "").trim();
+
+  const status = workNoteStatus?.value || "todo";
+  const deadline = workNoteDeadline?.value || "";
+  const comment = (workNoteComment?.value || "").trim();
+
+  if (!title && !text) {
+    alert("Напиши хоча б заголовок або опис 🙂");
+    return;
+  }
+
+  workNotes.push({
+    id: "work_" + uid(),
+    type,
+    title,
+    text,
+    status: type === "note" ? "note" : status,
+    deadline: type === "note" ? "" : deadline,
+    comment: type === "note" ? "" : comment,
+    done: status === "done",
+    ts: Date.now()
+  });
+
+  if (workNoteTitle) workNoteTitle.value = "";
+  if (workNoteText) workNoteText.value = "";
+  if (workNoteComment) workNoteComment.value = "";
+  if (workNoteDeadline) workNoteDeadline.value = "";
+  if (workNoteStatus) workNoteStatus.value = "todo";
+
+  saveStorage();
+  renderWorkNotesPage();
 }
 
   // ---------------- Wire events ----------------
@@ -3033,6 +3183,7 @@ on(btnSalaryStatement, "click", openSalaryStatement);
 on(addSubjectBtn, "click", addSubjectFlow);
 on(deleteSubjectBtn, "click", deleteSubjectFlow);
 on(mailCreateLeadBtn, "click", createLeadFromActiveMail);
+on(addWorkNoteBtn, "click", addWorkNoteFlow);
 
 // close report modal
 on(reportModal, "click", (e) => {

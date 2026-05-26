@@ -30,7 +30,7 @@
 </button>
 
   <button class="nav__item" type="button" data-page="page-chat">
-    <span class="nav__icon">💬</span> Внутрішній чат
+    <span class="nav__icon">📝</span> Нотатки / ТЗ
   </button>
 
   <button class="nav__item" type="button" data-page="page-mail">
@@ -355,40 +355,60 @@
 
   <!-- ===== ЧАТ ===== -->
   <section class="page" id="page-chat">
-    <div class="chat">
-      <div class="chat__left card">
-        <div class="chat__leftHead">
-          <input class="chat__search" placeholder="Пошук за контактами" />
-          <button id="newChatBtn" class="btn btn-primary">+ Новий чат</button>
-        </div>
-        <div class="chat__contacts">
-          <button class="chat__contact is-active">
-            <div class="chat__ava">🙂</div>
-            <div>
-              <div class="chat__name">Платонова Юлія</div>
-              <div class="chat__hint muted">Це ви</div>
-            </div>
-          </button>
-        </div>
+  <div class="card" style="padding:16px;">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Нотатки / ТЗ / задачі</div>
+        <div class="muted">Внутрішній робочий блок замість чату</div>
       </div>
 
-      <div class="chat__right card">
-  <div class="chat__head" id="chatHead">
-    <div class="chat__title" id="chatTitle">Чат</div>
-    <div class="muted" id="chatSub">—</div>
-  </div>
-
-  <div class="chat__msgs" id="chatMsgs">
-    <div class="chat__empty muted">Оберіть чат зліва або створіть новий 🙂</div>
-  </div>
-
-  <div class="chat__composer" id="chatComposer" style="display:none;">
-    <input id="chatInput" class="chat__input" placeholder="Напишіть повідомлення…" />
-    <button id="chatSendBtn" class="btn btn-primary">Надіслати</button>
-  </div>
-</div>
+      <button id="addWorkNoteBtn" class="btn btn-primary">➕ Додати</button>
     </div>
-  </section>
+
+    <div class="form-grid" style="margin-bottom:14px;">
+  <label class="field">
+    <span>Тип</span>
+    <select id="workNoteType">
+      <option value="note">Нотатка</option>
+      <option value="task">Задача</option>
+      <option value="tz">ТЗ</option>
+    </select>
+  </label>
+
+  <label class="field">
+    <span>Статус</span>
+    <select id="workNoteStatus">
+      <option value="todo">Не виконано</option>
+      <option value="done">Виконано</option>
+    </select>
+  </label>
+
+  <label class="field">
+    <span>Термін виконання</span>
+    <input id="workNoteDeadline" type="date" />
+  </label>
+
+  <label class="field">
+    <span>Заголовок</span>
+    <input id="workNoteTitle" placeholder="Наприклад: ТЗ для сайту / задача менеджеру" />
+  </label>
+
+  <label class="field field--full">
+    <span>Опис</span>
+    <input id="workNoteText" placeholder="Деталі, що потрібно зробити..." />
+  </label>
+
+  <label class="field field--full">
+    <span>Коментар / причина</span>
+    <input id="workNoteComment" placeholder="Наприклад: чому не виконано або що зроблено" />
+  </label>
+</div>
+
+<div id="workNotesList" class="tasks-list"></div>
+
+    <div id="workNotesList" class="tasks-list"></div>
+  </div>
+</section>
 
   <section id="page-mail" class="page">
   <div class="mail-page">
