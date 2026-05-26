@@ -862,7 +862,6 @@ if (leadsTab === "leads") {
         <div class="lead-item__meta">Натисни, щоб відкрити картку учня</div>
       `;
       el.addEventListener("click", () => openStudentPage(s.name));
-      el.addEventListener("click", () => openPersonModal({ kind:"lead", id:l.id }));
       studentsList.appendChild(el);
     }
   }
@@ -3172,12 +3171,33 @@ function addWorkNoteFlow() {
   on(a, "click", (e) => {
     e.preventDefault();
     openPage(a.dataset.page);
+
+    if (window.innerWidth <= 900 && sidebar) {
+      sidebar.classList.remove("is-open");
+    }
   });
 });
     on(sidebarToggle, "click", () => {
-    if (!appRoot) return;
-      appRoot.classList.toggle("sidebar-collapsed");
-    });
+  if (!sidebar || !appRoot) return;
+
+  if (window.innerWidth <= 900) {
+    sidebar.classList.toggle("is-open");
+  } else {
+    appRoot.classList.toggle("sidebar-collapsed");
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (window.innerWidth > 900) return;
+  if (!sidebar || !sidebarToggle) return;
+
+  const clickedSidebar = sidebar.contains(e.target);
+  const clickedBurger = sidebarToggle.contains(e.target);
+
+  if (!clickedSidebar && !clickedBurger) {
+    sidebar.classList.remove("is-open");
+  }
+});
     on(addLessonBtn, "click", openModalNew);
     on(todayBtn, "click", () => {
       currentDayISO = isoToday();

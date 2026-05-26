@@ -1585,3 +1585,407 @@ a{ color:inherit; text-decoration:none; }
   background:#fef2f2;
   border-color:#fecaca;
 }
+
+/* ===== RESPONSIVE FIX: TABLET / MOBILE ===== */
+
+@media (max-width: 1200px){
+  .app{
+    grid-template-columns: 220px 1fr;
+  }
+
+  .toolbar{
+    flex-wrap:wrap;
+    align-items:flex-start;
+  }
+
+  .toolbar__left{
+    flex-wrap:wrap;
+    width:100%;
+  }
+
+  .topbar{
+    flex-wrap:wrap;
+    height:auto;
+    min-height:56px;
+    padding:8px 10px;
+  }
+
+  .search{
+    max-width:none;
+    min-width:220px;
+  }
+
+  .content,
+  .pages{
+    padding:10px;
+  }
+
+  .day,
+  .week,
+  .month-grid{
+    overflow-x:auto;
+  }
+}
+
+@media (max-width: 900px){
+  .app{
+    grid-template-columns:1fr;
+  }
+
+  .sidebar{
+    position:fixed;
+    left:0;
+    top:0;
+    bottom:0;
+    width:240px;
+    z-index:1000;
+    transform:translateX(-100%);
+    transition:.2s ease;
+    box-shadow:var(--shadow);
+  }
+
+  .sidebar.is-open{
+    transform:translateX(0);
+    display:flex;
+  }
+
+  .main{
+    width:100%;
+  }
+
+  .topbar__right{
+    margin-left:0;
+    width:100%;
+    justify-content:flex-end;
+  }
+
+  .toolbar{
+    padding:10px;
+    gap:10px;
+  }
+
+  .toolbar__left{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+
+  .view-icons,
+  .nav-arrows,
+  .tabs{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+
+  .title{
+    margin-left:0;
+  }
+
+  .title__big{
+    font-size:18px;
+  }
+
+  .profile2__grid,
+  .profile-layout,
+  .mail-page,
+  .chat,
+  .leads-grid{
+    grid-template-columns:1fr;
+  }
+
+  .mail-sidebar,
+  .mail-view{
+    min-height:auto;
+  }
+
+  .form-grid{
+    grid-template-columns:1fr;
+  }
+
+  .modal-js__card{
+    width:calc(100% - 20px);
+    margin:30px auto;
+    max-height:calc(100vh - 60px);
+    overflow:auto;
+  }
+
+  .student-card{
+    left:10px !important;
+    right:10px !important;
+    width:auto;
+  }
+}
+
+@media (max-width: 600px){
+  body{
+    font-size:14px;
+  }
+
+  .topbar{
+    gap:8px;
+  }
+
+  .search{
+    order:3;
+    width:100%;
+    flex:none;
+  }
+
+  .user-pill,
+  .topbar__right select{
+    width:100%;
+  }
+
+  .toolbar{
+    display:block;
+  }
+
+  .toolbar__left{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .toolbar select,
+  .toolbar .btn,
+  .toolbar button{
+    width:100%;
+  }
+
+  .tabs{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:8px;
+  }
+
+  .tab{
+    text-align:center;
+  }
+
+  .day{
+    min-width:360px;
+  }
+
+  .day__grid{
+    grid-template-columns:64px 1fr;
+  }
+
+  .day__timecol{
+    font-size:12px;
+  }
+
+  .event{
+    padding:7px 8px;
+  }
+
+  .event__time{
+    font-size:11px;
+  }
+
+  .event__title{
+    font-size:13px;
+  }
+
+  .event__meta{
+    font-size:11px;
+  }
+
+  .month-grid{
+    display:block;
+  }
+
+  .month-grid__head{
+    display:none;
+  }
+
+  .day-cell{
+    min-height:auto;
+    border-right:none;
+  }
+
+  .week{
+    overflow-x:auto;
+  }
+
+  .week__grid{
+    min-width:760px;
+  }
+
+  .profile2__top{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .profile2__actions{
+    width:100%;
+  }
+
+  .profile2__actions .btn{
+    width:100%;
+  }
+
+  .teacher-info__row{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .mail-view__head{
+    flex-direction:column;
+  }
+
+  .mail-view__actions{
+    width:100%;
+  }
+
+  .mail-view__actions .btn{
+    width:100%;
+  }
+
+  .mail-kv{
+    grid-template-columns:1fr;
+  }
+
+  .report-row,
+  .list-row{
+    grid-template-columns:1fr !important;
+  }
+
+  .course-card__top{
+    flex-direction:column;
+  }
+
+  .course-card__top .btn{
+    width:100%;
+  }
+
+  .modal-js__foot{
+    flex-direction:column;
+    align-items:stretch;
+  }
+
+  .modal-js__foot .btn{
+    width:100%;
+  }
+}
+
+@media (max-width: 900px){
+  .sidebar{
+    display:flex !important;
+    position:fixed;
+    top:0;
+    left:0;
+    bottom:0;
+    width:260px;
+    z-index:9999;
+    transform:translateX(-100%);
+    transition:.25s ease;
+    box-shadow:var(--shadow);
+  }
+
+  .sidebar.is-open{
+    transform:translateX(0);
+  }
+
+  .app.sidebar-collapsed{
+    grid-template-columns:1fr;
+  }
+
+  .app.sidebar-collapsed .sidebar{
+    width:260px;
+  }
+}
+
+@media (max-width: 600px){
+  .toolbar,
+  .toolbar__left{
+    gap:8px;
+  }
+
+  .toolbar .btn,
+  .toolbar select,
+  .toolbar button{
+    min-width:0;
+    font-size:13px;
+    padding:9px 10px;
+    white-space:normal;
+    line-height:1.1;
+  }
+
+  .title__big{
+    font-size:18px;
+    text-align:center;
+  }
+
+  .event__title{
+    font-size:13px;
+    line-height:1.15;
+    word-break:break-word;
+  }
+
+  .event__meta{
+    font-size:11px;
+    line-height:1.2;
+    word-break:break-word;
+  }
+
+  .dayTitle,
+  #dayTitle{
+    font-size:17px;
+    text-align:center;
+  }
+}
+
+@media (max-width: 700px){
+
+  .toolbar,
+  .toolbar__left,
+  .toolbar__right{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    width:100%;
+    align-items:center;
+  }
+
+  .toolbar select,
+  .toolbar button,
+  .toolbar .btn{
+    flex:1 1 calc(50% - 10px);
+    min-width:0;
+    min-height:48px;
+    font-size:14px;
+    justify-content:center;
+  }
+
+  .toolbar .btn-success{
+    flex:1 1 100%;
+  }
+
+  .calendar-switch{
+    width:100%;
+    display:flex;
+    gap:8px;
+  }
+
+  .calendar-switch button{
+    flex:1;
+  }
+
+  .topbar{
+    flex-wrap:wrap;
+    gap:10px;
+  }
+
+  .topbar input,
+  .topbar select{
+    width:100%;
+  }
+
+  .calendar-header{
+    text-align:center;
+  }
+
+  .calendar-header h2{
+    font-size:28px;
+  }
+}
