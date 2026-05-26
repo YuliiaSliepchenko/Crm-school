@@ -2644,28 +2644,95 @@ function renderReportTable(title, list){
   showReportModal(true);
 }
 
+function renderStudentsTeacherReport(title, teacher, rows){
+  if (reportTitle) reportTitle.textContent = title;
+  if (!reportTable || !reportSummary) return;
+
+  const totalLessons = rows.reduce((s,r)=>s + r.count, 0);
+  const totalMinutes = rows.reduce((s,r)=>s + r.minutes, 0);
+
+  reportSummary.textContent =
+    `Викладач: ${teacher} • Учнів: ${rows.length} • Уроків: ${totalLessons} • Разом: ${totalMinutes} хв`;
+
+  reportTable.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "report-row report-h";
+  head.style.gridTemplateColumns = "1fr 140px 140px 140px";
+  head.innerHTML = `
+    <div>Учень</div>
+    <div>Уроків</div>
+    <div>Хвилин</div>
+    <div>Годин</div>
+  `;
+  reportTable.appendChild(head);
+
+  if (!rows.length){
+    const empty = document.createElement("div");
+    empty.className = "week__empty";
+    empty.textContent = "Поки що немає проведених уроків 🙂";
+    reportTable.appendChild(empty);
+  } else {
+    for (const r of rows){
+      const hours = (r.minutes / 60).toFixed(1);
+
+      const row = document.createElement("div");
+      row.className = "report-row";
+      row.style.gridTemplateColumns = "1fr 140px 140px 140px";
+      row.innerHTML = `
+        <div><b>${escapeHtml(r.name)}</b></div>
+        <div>${r.count}</div>
+        <div>${r.minutes} хв</div>
+        <div>${hours} год</div>
+      `;
+      reportTable.appendChild(row);
+    }
+  }
+
+  showReportModal(true);
+}
+
 function openDoneRegister(){
-  const cur = parseISODate(currentDayISO);
-  const y = cur.getFullYear(), m = cur.getMonth();
-  const from = new Date(y,m,1);
-  const to = new Date(y,m+1,0);
+  const teacher = currentTeacher || getSelectedTeacherName();
 
-  const list = lessons
-    .filter(l => l.teacher === currentTeacher)
-    .filter(l => {
-      const d = parseISODate(l.date);
-      return d >= from && d <= to;
-    })
-    .filter(l => l.status === "done" || l.status === "debt")
-    .sort((a,b)=> (a.date!==b.date ? a.date.localeCompare(b.date) : hhmmToMin(a.start)-hhmmToMin(b.start)));
+  const doneStatuses = ["done", "debt", "free"];
 
-  renderReportTable("Реєстр проведених уроків", list);
+  const teacherLessons = lessons
+    .filter(l => l.teacher === teacher)
+    .filter(l => doneStatuses.includes(l.status));
+
+  const studentsMap = new Map();
+
+  for (const l of teacherLessons){
+    const studentsList = Array.isArray(l.students) ? l.students : [];
+
+    for (const student of studentsList){
+      const name = String(student || "").trim();
+      if (!name) continue;
+
+      if (!studentsMap.has(name)){
+        studentsMap.set(name, {
+          name,
+          count: 0,
+          minutes: 0
+        });
+      }
+
+      const item = studentsMap.get(name);
+      item.count += 1;
+      item.minutes += Number(l.dur || 0);
+    }
+  }
+
+  const rows = Array.from(studentsMap.values())
+    .sort((a,b)=>a.name.localeCompare(b.name,"uk"));
+
+  renderStudentsTeacherReport("Реєстр проведених уроків", teacher, rows);
 }
 
 function openSalaryStatement(){
-  // демо як список проведених (потім додамо тариф/розрахунок)
   openDoneRegister();
-  if (reportTitle) reportTitle.textContent = "Виписка по зарплаті (демо)";
+  if (reportTitle) reportTitle.textContent = "Виписка по зарплаті";
 }
 
   // ---------------- Modal: multi-students ----------------
