@@ -2994,7 +2994,8 @@ function openSalaryStatement(){
     "page-leads",
     "page-chat",
     "page-student",
-    "page-mail"
+    "page-mail",
+    "page-integrations"
   ];
 
   currentPageId = safePages.includes(pageId) ? pageId : "page-lessons";
