@@ -3936,4 +3936,62 @@ function fillSubjectSelect(selected = "") {
   fSubject.value = selected || "";
 }
 
+const GOOGLE_BACKEND_URL = "https://sitechat-production.up.railway.app";
+
+const connectGoogleBtn = document.getElementById("connectGoogleBtn");
+const disconnectGoogleBtn = document.getElementById("disconnectGoogleBtn");
+const googleStatusBadge = document.getElementById("googleStatusBadge");
+const googleConnectedInfo = document.getElementById("googleConnectedInfo");
+
+async function refreshGoogleStatus() {
+  if (!googleStatusBadge || !googleConnectedInfo) return;
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/status`);
+    const data = await res.json();
+
+    if (!data.configured) {
+      googleStatusBadge.textContent = "Не налаштовано";
+      googleStatusBadge.className = "integration-status is-soon";
+      googleConnectedInfo.textContent = "Google OAuth змінні ще не налаштовані на Railway.";
+      disconnectGoogleBtn?.classList.add("is-hidden");
+      return;
+    }
+
+    if (data.connected) {
+      googleStatusBadge.textContent = "Підключено";
+      googleStatusBadge.className = "integration-status";
+      googleConnectedInfo.textContent = `Підключений акаунт: ${data.email}`;
+      connectGoogleBtn.textContent = "🔁 Перепідключити Google";
+      disconnectGoogleBtn?.classList.remove("is-hidden");
+    } else {
+      googleStatusBadge.textContent = "Не підключено";
+      googleStatusBadge.className = "integration-status is-dev";
+      googleConnectedInfo.textContent = "Натисни кнопку нижче, щоб підключити Google акаунт.";
+      connectGoogleBtn.textContent = "🔐 Підключити Google";
+      disconnectGoogleBtn?.classList.add("is-hidden");
+    }
+  } catch (err) {
+    googleStatusBadge.textContent = "Помилка";
+    googleStatusBadge.className = "integration-status is-soon";
+    googleConnectedInfo.textContent = "CRM не може отримати статус Google з Railway.";
+  }
+}
+
+connectGoogleBtn?.addEventListener("click", () => {
+  window.location.href = `${GOOGLE_BACKEND_URL}/api/google/login`;
+});
+
+disconnectGoogleBtn?.addEventListener("click", async () => {
+  if (!confirm("Відключити Google акаунт від CRM?")) return;
+
+  await fetch(`${GOOGLE_BACKEND_URL}/api/google/disconnect`, {
+    method: "POST"
+  });
+
+  await refreshGoogleStatus();
+});
+
+refreshGoogleStatus();
+
 })();

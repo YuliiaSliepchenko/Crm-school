@@ -557,15 +557,36 @@
         <button class="btn btn-ghost">Підключити</button>
       </div>
 
-      <div class="integration-card">
-        <div class="integration-icon">📊</div>
-        <div>
-          <h3>Google Sheets</h3>
-          <p>Збереження заявок, пошти, лідів та історії звернень.</p>
-        </div>
-        <span class="integration-status is-dev">API</span>
-        <button class="btn btn-ghost">Підключити</button>
-      </div>
+      <div class="integration-card integration-card--google" id="googleIntegrationCard">
+  <div class="integration-icon">🟢</div>
+
+  <div>
+    <h3>Google Workspace</h3>
+    <p>Gmail, Sheets, Calendar, Translate, Gemini та майбутні Google-сервіси CRM.</p>
+  </div>
+
+  <span id="googleStatusBadge" class="integration-status is-dev">Перевірка...</span>
+
+  <div id="googleConnectedInfo" class="integration-connected-info">
+    —
+  </div>
+
+  <div class="integration-services">
+    <span>✉️ Gmail</span>
+    <span>📊 Sheets</span>
+    <span>📅 Calendar</span>
+    <span>🌍 Translate</span>
+    <span>🧠 Gemini</span>
+  </div>
+
+  <button id="connectGoogleBtn" class="btn btn-primary" type="button">
+    🔐 Підключити Google
+  </button>
+
+  <button id="disconnectGoogleBtn" class="btn btn-ghost integration-danger-btn" type="button">
+    🚪 Вийти з Google акаунту
+  </button>
+</div>
 
       <div class="integration-card">
         <div class="integration-icon">📅</div>

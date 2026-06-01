@@ -2451,3 +2451,45 @@ a{ color:inherit; text-decoration:none; }
     font-size:28px;
   }
 }
+
+.integration-card--google{
+  border-color:rgba(34,197,94,.35);
+  background:
+    radial-gradient(circle at top right, rgba(34,197,94,.12), transparent 36%),
+    radial-gradient(circle at bottom left, rgba(59,130,246,.10), transparent 32%),
+    #fff;
+}
+
+.integration-connected-info{
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8fafc;
+  font-size:13px;
+  font-weight:800;
+  color:var(--muted);
+}
+
+.integration-services{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+
+.integration-services span{
+  padding:5px 9px;
+  border-radius:999px;
+  background:#f8fafc;
+  border:1px solid var(--line);
+  font-size:12px;
+  font-weight:900;
+}
+
+.integration-danger-btn{
+  border-color:#fecaca !important;
+  color:#b91c1c !important;
+}
+
+.integration-danger-btn.is-hidden{
+  display:none;
+}
