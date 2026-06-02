@@ -4213,4 +4213,25 @@ gwsGeminiBtn?.addEventListener("click", async () => {
   }
 });
 
+// ===== Google OAuth redirect back to CRM =====
+(function handleGoogleRedirectBackToCRM() {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("page") === "integrations") {
+    const integrationsBtn = document.querySelector('.nav__item[data-page="page-integrations"]');
+    integrationsBtn?.click();
+  }
+
+  if (params.get("open") === "googlehub") {
+    setTimeout(() => {
+      document.getElementById("openGoogleWorkspaceHubBtn")?.click();
+    }, 700);
+  }
+
+  if (params.has("google")) {
+    const cleanUrl = window.location.origin + window.location.pathname;
+    window.history.replaceState({}, "", cleanUrl);
+  }
+})();
+
 })();
