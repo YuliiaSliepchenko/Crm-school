@@ -3994,4 +3994,223 @@ disconnectGoogleBtn?.addEventListener("click", async () => {
 
 refreshGoogleStatus();
 
+/* ===== GOOGLE WORKSPACE HUB ===== */
+
+const openGoogleWorkspaceHubBtn = document.getElementById("openGoogleWorkspaceHubBtn");
+const closeGoogleWorkspaceHubBtn = document.getElementById("closeGoogleWorkspaceHubBtn");
+const googleWorkspaceHub = document.getElementById("googleWorkspaceHub");
+const gwsNeedLogin = document.getElementById("gwsNeedLogin");
+const gwsHubApp = document.getElementById("gwsHubApp");
+const gwsHubStatusText = document.getElementById("gwsHubStatusText");
+const gwsLoginBtn = document.getElementById("gwsLoginBtn");
+
+const gwsTabs = document.querySelectorAll("[data-gws-tab]");
+const gwsPanels = document.querySelectorAll("[data-gws-panel]");
+
+async function getGoogleWorkspaceStatus() {
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/status?t=${Date.now()}`);
+    return await res.json();
+  } catch (err) {
+    console.error("Google Hub status error:", err);
+    return {
+      configured: false,
+      connected: false,
+      error: true
+    };
+  }
+}
+
+function openGoogleWorkspaceHubUI() {
+  if (!googleWorkspaceHub) return;
+
+  googleWorkspaceHub.classList.add("is-open");
+  googleWorkspaceHub.setAttribute("aria-hidden", "false");
+  document.body.classList.add("gws-lock");
+}
+
+function closeGoogleWorkspaceHubUI() {
+  if (!googleWorkspaceHub) return;
+
+  googleWorkspaceHub.classList.remove("is-open");
+  googleWorkspaceHub.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("gws-lock");
+}
+
+function showGoogleHubLoginState(message) {
+  if (gwsHubStatusText) {
+    gwsHubStatusText.textContent = message || "Потрібно увійти в Google акаунт.";
+  }
+
+  gwsNeedLogin?.classList.add("is-visible");
+  gwsHubApp?.classList.remove("is-visible");
+}
+
+function showGoogleHubAppState(email) {
+  if (gwsHubStatusText) {
+    gwsHubStatusText.textContent = email
+      ? `Підключений акаунт: ${email}`
+      : "Google акаунт підключено.";
+  }
+
+  gwsNeedLogin?.classList.remove("is-visible");
+  gwsHubApp?.classList.add("is-visible");
+}
+
+async function openGoogleWorkspaceHub() {
+  openGoogleWorkspaceHubUI();
+
+  const badgeText = (googleStatusBadge?.textContent || "").trim();
+  const connectedInfo = (googleConnectedInfo?.textContent || "").trim();
+
+  if (badgeText === "Підключено") {
+    const email = connectedInfo.replace("Підключений акаунт:", "").trim();
+    showGoogleHubAppState(email);
+  } else {
+    showGoogleHubLoginState("Перевіряємо Google акаунт...");
+  }
+
+  setTimeout(async () => {
+    const status = await getGoogleWorkspaceStatus();
+
+    if (status.error) {
+      showGoogleHubLoginState("CRM не може отримати статус Google з Railway.");
+      return;
+    }
+
+    if (!status.configured) {
+      showGoogleHubLoginState("Google OAuth ще не налаштований на Railway.");
+      return;
+    }
+
+    if (!status.connected) {
+      showGoogleHubLoginState("Потрібно увійти в Google акаунт.");
+      return;
+    }
+
+    showGoogleHubAppState(status.email);
+  }, 80);
+}
+
+function setGoogleHubTab(tabName) {
+  gwsTabs.forEach(tab => {
+    tab.classList.toggle("is-active", tab.dataset.gwsTab === tabName);
+  });
+
+  gwsPanels.forEach(panel => {
+    panel.classList.toggle("is-active", panel.dataset.gwsPanel === tabName);
+  });
+}
+
+openGoogleWorkspaceHubBtn?.addEventListener("click", openGoogleWorkspaceHub);
+closeGoogleWorkspaceHubBtn?.addEventListener("click", closeGoogleWorkspaceHubUI);
+
+googleWorkspaceHub?.addEventListener("click", (e) => {
+  if (e.target?.dataset?.gwsClose === "1") {
+    closeGoogleWorkspaceHubUI();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && googleWorkspaceHub?.classList.contains("is-open")) {
+    closeGoogleWorkspaceHubUI();
+  }
+});
+
+gwsLoginBtn?.addEventListener("click", () => {
+  window.location.href = `${GOOGLE_BACKEND_URL}/api/google/login`;
+});
+
+gwsTabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    setGoogleHubTab(tab.dataset.gwsTab);
+  });
+});
+
+const gwsTranslateBtn = document.getElementById("gwsTranslateBtn");
+const gwsTranslateInput = document.getElementById("gwsTranslateInput");
+const gwsTranslateLang = document.getElementById("gwsTranslateLang");
+const gwsTranslateResult = document.getElementById("gwsTranslateResult");
+
+gwsTranslateBtn?.addEventListener("click", async () => {
+  const text = (gwsTranslateInput?.value || "").trim();
+  const target = gwsTranslateLang?.value || "uk";
+
+  if (!text) {
+    if (gwsTranslateResult) gwsTranslateResult.textContent = "Вставте текст для перекладу.";
+    return;
+  }
+
+  if (gwsTranslateResult) {
+    gwsTranslateResult.textContent = "Перекладаємо...";
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/translate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text, target })
+    });
+
+    const data = await res.json();
+
+    if (gwsTranslateResult) {
+      gwsTranslateResult.textContent =
+        data.translation ||
+        data.translatedText ||
+        data.text ||
+        "Переклад виконано, але backend повернув незнайомий формат відповіді.";
+    }
+  } catch (err) {
+    if (gwsTranslateResult) {
+      gwsTranslateResult.textContent =
+        "Backend-роут перекладу ще не відповідає. Потрібно перевірити /api/google/translate на Railway.";
+    }
+  }
+});
+
+const gwsGeminiBtn = document.getElementById("gwsGeminiBtn");
+const gwsGeminiInput = document.getElementById("gwsGeminiInput");
+const gwsGeminiResult = document.getElementById("gwsGeminiResult");
+
+gwsGeminiBtn?.addEventListener("click", async () => {
+  const prompt = (gwsGeminiInput?.value || "").trim();
+
+  if (!prompt) {
+    if (gwsGeminiResult) gwsGeminiResult.textContent = "Напишіть запит для Gemini.";
+    return;
+  }
+
+  if (gwsGeminiResult) {
+    gwsGeminiResult.textContent = "Gemini думає...";
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/gemini`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await res.json();
+
+    if (gwsGeminiResult) {
+      gwsGeminiResult.textContent =
+        data.answer ||
+        data.text ||
+        data.response ||
+        "Gemini відповів, але backend повернув незнайомий формат відповіді.";
+    }
+  } catch (err) {
+    if (gwsGeminiResult) {
+      gwsGeminiResult.textContent =
+        "Backend-роут Gemini ще не відповідає. Потрібно перевірити /api/google/gemini на Railway.";
+    }
+  }
+});
+
 })();

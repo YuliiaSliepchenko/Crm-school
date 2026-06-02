@@ -583,6 +583,10 @@
     🔐 Підключити Google
   </button>
 
+  <button id="openGoogleWorkspaceHubBtn" class="btn btn-ghost gws-hub-open-btn" type="button">
+  🚀 Відкрити Google Hub
+</button>
+
   <button id="disconnectGoogleBtn" class="btn btn-ghost integration-danger-btn" type="button">
     🚪 Вийти з Google акаунту
   </button>
@@ -870,6 +874,195 @@
       <button class="btn btn-primary" id="saveTeacherBtn">💾 Зберегти</button>
     </div>
   </div>
+</div>
+
+<!-- ===== GOOGLE WORKSPACE HUB MODAL ===== -->
+<div id="googleWorkspaceHub" class="gws-hub" aria-hidden="true">
+  <div class="gws-hub__backdrop" data-gws-close="1"></div>
+
+  <section class="gws-hub__shell">
+    <header class="gws-hub__top">
+      <div>
+        <div class="gws-hub__kicker">GOOGLE WORKSPACE</div>
+        <h2>Google Hub</h2>
+        <p id="gwsHubStatusText">Перевіряємо підключення Google акаунту...</p>
+      </div>
+
+      <button id="closeGoogleWorkspaceHubBtn" class="gws-hub__close" type="button">
+        ✕ Закрити
+      </button>
+    </header>
+
+    <div id="gwsNeedLogin" class="gws-login-box">
+      <div class="gws-login-box__icon">🔐</div>
+      <h3>Потрібно увійти в Google акаунт</h3>
+      <p>
+        Щоб користуватися Gmail, Translate, Calendar, Sheets та Gemini,
+        спочатку підключіть Google акаунт до CRM.
+      </p>
+
+      <button id="gwsLoginBtn" class="btn btn-primary" type="button">
+        🔐 Увійти через Google
+      </button>
+    </div>
+
+    <div id="gwsHubApp" class="gws-layout">
+      <aside class="gws-sidebar">
+        <div class="gws-sidebar__title">Функції</div>
+
+        <button class="gws-tab is-active" type="button" data-gws-tab="gmail">
+          <span>✉️</span>
+          <div>
+            <b>Gmail</b>
+            <small>Листи та заявки</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-gws-tab="translate">
+          <span>🌍</span>
+          <div>
+            <b>Translate</b>
+            <small>Перекладач</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-gws-tab="gemini">
+          <span>🧠</span>
+          <div>
+            <b>Gemini</b>
+            <small>AI-помічник</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-gws-tab="calendar">
+          <span>📅</span>
+          <div>
+            <b>Calendar</b>
+            <small>Уроки та події</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-gws-tab="sheets">
+          <span>📊</span>
+          <div>
+            <b>Sheets</b>
+            <small>Таблиці CRM</small>
+          </div>
+        </button>
+      </aside>
+
+      <main class="gws-content">
+        <section class="gws-panel is-active" data-gws-panel="gmail">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Gmail</h3>
+              <p>Листи, заявки та повідомлення з Google акаунту.</p>
+            </div>
+            <button class="btn btn-primary" type="button">Оновити листи</button>
+          </div>
+
+          <div class="gws-cards-grid">
+            <div class="gws-mini-card">
+              <b>Нові листи</b>
+              <span>Поки не завантажено</span>
+            </div>
+            <div class="gws-mini-card">
+              <b>В роботі</b>
+              <span>Підключимо до CRM-статусів</span>
+            </div>
+            <div class="gws-mini-card">
+              <b>Заявки</b>
+              <span>Можна створювати лідів</span>
+            </div>
+          </div>
+
+          <div class="gws-empty">
+            Тут буде список листів Gmail після підключення backend-роуту для отримання листів.
+          </div>
+        </section>
+
+        <section class="gws-panel" data-gws-panel="translate">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Google Translate</h3>
+              <p>Швидкий переклад текстів для клієнтів, уроків і листів.</p>
+            </div>
+          </div>
+
+          <div class="gws-tool-grid">
+            <textarea id="gwsTranslateInput" class="gws-textarea" placeholder="Вставте текст для перекладу..."></textarea>
+
+            <div class="gws-tool-side">
+              <label>
+                Мова перекладу
+                <select id="gwsTranslateLang">
+                  <option value="uk">Українська</option>
+                  <option value="en">Англійська</option>
+                  <option value="pl">Польська</option>
+                  <option value="de">Німецька</option>
+                </select>
+              </label>
+
+              <button id="gwsTranslateBtn" class="btn btn-primary" type="button">
+                🌍 Перекласти
+              </button>
+            </div>
+          </div>
+
+          <div id="gwsTranslateResult" class="gws-result">
+            Результат перекладу буде тут.
+          </div>
+        </section>
+
+        <section class="gws-panel" data-gws-panel="gemini">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Gemini</h3>
+              <p>AI-помічник для відповідей клієнтам, текстів і коротких підсумків.</p>
+            </div>
+          </div>
+
+          <textarea id="gwsGeminiInput" class="gws-textarea" placeholder="Наприклад: напиши відповідь клієнту про пробний урок..."></textarea>
+
+          <button id="gwsGeminiBtn" class="btn btn-primary" type="button">
+            🧠 Запустити Gemini
+          </button>
+
+          <div id="gwsGeminiResult" class="gws-result">
+            AI-відповідь буде тут.
+          </div>
+        </section>
+
+        <section class="gws-panel" data-gws-panel="calendar">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Google Calendar</h3>
+              <p>Синхронізація уроків, розкладу та нагадувань.</p>
+            </div>
+            <button class="btn btn-primary" type="button">Синхронізувати</button>
+          </div>
+
+          <div class="gws-empty">
+            Тут буде список подій календаря та кнопки синхронізації уроків CRM.
+          </div>
+        </section>
+
+        <section class="gws-panel" data-gws-panel="sheets">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Google Sheets</h3>
+              <p>Експорт лідів, учнів, заявок і статистики в таблиці.</p>
+            </div>
+            <button class="btn btn-primary" type="button">Експорт у Sheets</button>
+          </div>
+
+          <div class="gws-empty">
+            Тут буде керування таблицями: ліди, учні, уроки, фінанси.
+          </div>
+        </section>
+      </main>
+    </div>
+  </section>
 </div>
 
   <script src="app.js"></script>
