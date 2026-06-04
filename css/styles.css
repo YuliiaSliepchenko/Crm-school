@@ -3178,3 +3178,241 @@ body.gws-lock .gws-hub *{
     grid-template-columns:1fr;
   }
 }
+
+/* ===== GOOGLE HUB GMAIL ===== */
+
+.gws-gmail-layout{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  gap:16px;
+  align-items:start;
+}
+
+.gws-gmail-filters{
+  background:#fff;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:22px;
+  padding:14px;
+  box-shadow:0 12px 30px rgba(15,23,42,.06);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.gws-gmail-filter{
+  border:1px solid rgba(226,232,240,.95);
+  background:#f8fbff;
+  border-radius:15px;
+  padding:12px 14px;
+  cursor:pointer;
+  text-align:left;
+  font-weight:950;
+  color:#172033;
+  transition:.2s ease;
+}
+
+.gws-gmail-filter:hover{
+  background:#ecfdf3;
+  border-color:#bbf7d0;
+  transform:translateY(-1px);
+}
+
+.gws-gmail-filter.active{
+  background:#36c38d;
+  color:#fff;
+  border-color:#36c38d;
+  box-shadow:0 10px 24px rgba(35,178,107,.22);
+}
+
+.gws-gmail-main{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.gws-gmail-toolbar{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+.gws-gmail-search{
+  flex:1;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:16px;
+  padding:13px 15px;
+  font-family:inherit;
+  font-weight:800;
+  outline:none;
+  background:#fff;
+}
+
+.gws-gmail-search:focus{
+  border-color:#86efac;
+  box-shadow:0 0 0 4px rgba(35,178,107,.12);
+}
+
+.gws-gmail-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.gws-mail-card{
+  background:#fff;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:20px;
+  padding:15px;
+  box-shadow:0 12px 30px rgba(15,23,42,.05);
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.gws-mail-card:hover{
+  border-color:#86efac;
+  transform:translateY(-1px);
+  box-shadow:0 16px 34px rgba(15,23,42,.08);
+}
+
+.gws-mail-card__top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.gws-mail-card h4{
+  margin:0;
+  color:#172033;
+  font-size:16px;
+  font-weight:950;
+}
+
+.gws-mail-card small{
+  color:#94a3b8;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.gws-mail-card p{
+  margin:7px 0 0;
+  color:#64748b;
+  font-weight:750;
+  line-height:1.45;
+}
+
+.gws-mail-from{
+  margin-top:8px;
+  color:#0f7a4d;
+  font-weight:900;
+  font-size:13px;
+}
+
+.gws-mail-reader{
+  background:#fff;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:22px;
+  padding:18px;
+  box-shadow:0 12px 30px rgba(15,23,42,.06);
+}
+
+.gws-mail-reader h4{
+  margin:0 0 8px;
+  font-size:20px;
+  color:#172033;
+  font-weight:950;
+}
+
+.gws-mail-reader-meta{
+  color:#64748b;
+  font-weight:800;
+  margin-bottom:14px;
+}
+
+.gws-mail-reader-body{
+  white-space:pre-wrap;
+  color:#263244;
+  line-height:1.55;
+  font-weight:650;
+  max-height:420px;
+  overflow:auto;
+  padding:14px;
+  border-radius:16px;
+  background:#f8fbff;
+  border:1px solid rgba(226,232,240,.8);
+}
+
+@media (max-width:1000px){
+  .gws-gmail-layout{
+    grid-template-columns:1fr;
+  }
+
+  .gws-gmail-filters{
+    flex-direction:row;
+    overflow:auto;
+  }
+
+  .gws-gmail-filter{
+    min-width:max-content;
+  }
+}
+
+/* ===== GOOGLE HUB GMAIL SIDE READER FIX ===== */
+
+.gws-gmail-content{
+  display:grid;
+  grid-template-columns:minmax(420px, 1fr) minmax(420px, .85fr);
+  gap:14px;
+  align-items:start;
+}
+
+.gws-gmail-list{
+  max-height:58vh;
+  overflow:auto;
+  padding-right:4px;
+}
+
+.gws-mail-card.active{
+  border-color:#86efac;
+  box-shadow:0 0 0 3px rgba(35,178,107,.12), 0 16px 34px rgba(15,23,42,.08);
+}
+
+.gws-mail-reader,
+.gws-mail-reader-empty{
+  position:sticky;
+  top:12px;
+  min-height:260px;
+  max-height:58vh;
+  overflow:auto;
+  background:#fff;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:22px;
+  padding:18px;
+  box-shadow:0 12px 30px rgba(15,23,42,.06);
+}
+
+.gws-mail-reader-empty{
+  display:grid;
+  place-items:center;
+  color:#64748b;
+  font-weight:900;
+  text-align:center;
+  border-style:dashed;
+  background:rgba(255,255,255,.78);
+}
+
+.gws-mail-reader-body{
+  max-height:none;
+}
+
+@media (max-width:1200px){
+  .gws-gmail-content{
+    grid-template-columns:1fr;
+  }
+
+  .gws-mail-reader,
+  .gws-mail-reader-empty{
+    position:relative;
+    top:auto;
+  }
+}

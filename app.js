@@ -4653,4 +4653,299 @@ gwsCalendarTab?.addEventListener("click", () => {
   }, 100);
 });
 
+/* ===== GOOGLE HUB: GMAIL REAL DATA ===== */
+
+const gwsGmailPanel = document.querySelector('[data-gws-panel="gmail"]');
+const gwsGmailTab = document.querySelector('[data-gws-tab="gmail"]');
+
+let gwsCurrentGmailFilter = "inbox";
+
+const gwsGmailFilters = {
+  inbox: {
+    label: "Вхідні",
+    q: "in:inbox"
+  },
+  primary: {
+    label: "Основні",
+    q: "category:primary"
+  },
+  promotions: {
+    label: "Пропозиції",
+    q: "category:promotions"
+  },
+  social: {
+    label: "Соцмережі",
+    q: "category:social"
+  },
+  unread: {
+    label: "Непрочитані",
+    q: "is:unread"
+  },
+  starred: {
+    label: "Із зірочкою",
+    q: "is:starred"
+  },
+  sent: {
+    label: "Надіслані",
+    q: "in:sent"
+  },
+  important: {
+    label: "Важливі",
+    q: "is:important"
+  },
+  leads: {
+    label: "Заявки / клієнти",
+    q: "заявка OR курс OR пробний OR навчання OR телефон OR Telegram OR Viber"
+  },
+  all: {
+    label: "Усі листи",
+    q: ""
+  }
+};
+
+function gwsMailEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function gwsMailShortDate(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function renderGwsGmailBase() {
+  if (!gwsGmailPanel) return;
+
+  gwsGmailPanel.innerHTML = `
+    <div class="gws-panel__head">
+      <div>
+        <h3>Gmail</h3>
+        <p>Пошта з Google акаунту: вхідні, пропозиції, непрочитані, важливі, заявки та пошук по листах.</p>
+      </div>
+
+      <div class="gws-actions-row">
+        <button id="gwsRefreshGmailBtn" class="btn btn-primary" type="button">
+          🔄 Оновити листи
+        </button>
+      </div>
+    </div>
+
+    <div class="gws-gmail-layout">
+      <aside class="gws-gmail-filters">
+        <button class="gws-gmail-filter active" data-gmail-filter="inbox">📥 Вхідні</button>
+        <button class="gws-gmail-filter" data-gmail-filter="primary">📌 Основні</button>
+        <button class="gws-gmail-filter" data-gmail-filter="promotions">🏷️ Пропозиції</button>
+        <button class="gws-gmail-filter" data-gmail-filter="social">👥 Соцмережі</button>
+        <button class="gws-gmail-filter" data-gmail-filter="unread">🔵 Непрочитані</button>
+        <button class="gws-gmail-filter" data-gmail-filter="starred">⭐ Із зірочкою</button>
+        <button class="gws-gmail-filter" data-gmail-filter="sent">📤 Надіслані</button>
+        <button class="gws-gmail-filter" data-gmail-filter="important">❗ Важливі</button>
+        <button class="gws-gmail-filter" data-gmail-filter="leads">🧲 Заявки / клієнти</button>
+        <button class="gws-gmail-filter" data-gmail-filter="all">📚 Усі листи</button>
+      </aside>
+
+      <section class="gws-gmail-main">
+        <div class="gws-gmail-toolbar">
+          <input id="gwsGmailSearchInput" class="gws-gmail-search" type="text" placeholder="Пошук у Gmail: імʼя, тема, курс, телефон...">
+          <button id="gwsGmailSearchBtn" class="btn btn-primary" type="button">🔍 Знайти</button>
+        </div>
+
+        <div id="gwsGmailStatus" class="gws-status-line">
+          Натисніть “Оновити листи”, щоб підтягнути Gmail.
+        </div>
+
+        <div class="gws-gmail-content">
+          <div id="gwsGmailList" class="gws-gmail-list"></div>
+
+          <div id="gwsGmailReader" class="gws-mail-reader-empty">
+            Оберіть лист зі списку, і він відкриється тут.
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+
+  document.getElementById("gwsRefreshGmailBtn")?.addEventListener("click", () => {
+    loadGoogleGmailToHub();
+  });
+
+  document.getElementById("gwsGmailSearchBtn")?.addEventListener("click", () => {
+    const searchValue = document.getElementById("gwsGmailSearchInput")?.value.trim() || "";
+    loadGoogleGmailToHub(searchValue);
+  });
+
+  document.getElementById("gwsGmailSearchInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const searchValue = document.getElementById("gwsGmailSearchInput")?.value.trim() || "";
+      loadGoogleGmailToHub(searchValue);
+    }
+  });
+
+  document.querySelectorAll(".gws-gmail-filter").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".gws-gmail-filter").forEach((item) => {
+        item.classList.remove("active");
+      });
+
+      btn.classList.add("active");
+      gwsCurrentGmailFilter = btn.dataset.gmailFilter || "inbox";
+
+      const readerBox = document.getElementById("gwsGmailReader");
+      if (readerBox) {
+        readerBox.className = "gws-mail-reader-empty";
+        readerBox.innerHTML = "Оберіть лист зі списку, і він відкриється тут.";
+      }
+
+      loadGoogleGmailToHub();
+    });
+  });
+}
+
+async function loadGoogleGmailToHub(customQuery = "") {
+  const statusBox = document.getElementById("gwsGmailStatus");
+  const listBox = document.getElementById("gwsGmailList");
+  const readerBox = document.getElementById("gwsGmailReader");
+
+  if (!statusBox || !listBox) return;
+
+  statusBox.textContent = "Завантажуємо листи з Gmail...";
+  listBox.innerHTML = "";
+  if (readerBox) {
+  readerBox.className = "gws-mail-reader-empty";
+  readerBox.innerHTML = "Оберіть лист зі списку, і він відкриється тут.";
+  }
+
+  const filter = gwsGmailFilters[gwsCurrentGmailFilter] || gwsGmailFilters.inbox;
+  const query = customQuery || filter.q || "";
+
+  try {
+    const url = `${GOOGLE_BACKEND_URL}/api/google/gmail/list?max_results=30&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.success) {
+      statusBox.textContent = data.error || "Не вдалося отримати Gmail.";
+      return;
+    }
+
+    const messages = data.messages || [];
+
+    if (!messages.length) {
+      statusBox.textContent = `У розділі “${filter.label}” листів не знайдено.`;
+      return;
+    }
+
+    statusBox.textContent = `Знайдено листів: ${messages.length}`;
+
+    listBox.innerHTML = messages.map((mail) => `
+      <article class="gws-mail-card" data-message-id="${gwsMailEscape(mail.id)}">
+        <div class="gws-mail-card__top">
+          <h4>${gwsMailEscape(mail.subject || "(без теми)")}</h4>
+          <small>${gwsMailEscape(gwsMailShortDate(mail.date))}</small>
+        </div>
+
+        <div class="gws-mail-from">${gwsMailEscape(mail.from || "Невідомий відправник")}</div>
+        <p>${gwsMailEscape(mail.snippet || "")}</p>
+      </article>
+    `).join("");
+
+    document.querySelectorAll(".gws-mail-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        document.querySelectorAll(".gws-mail-card").forEach((item) => {
+          item.classList.remove("active");
+        });
+
+        card.classList.add("active");
+
+        const messageId = card.dataset.messageId;
+        if (messageId) {
+          readGoogleGmailMessage(messageId);
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error("Gmail load error:", error);
+    statusBox.textContent = "Помилка завантаження Gmail. Перевірте Railway backend.";
+  }
+}
+
+async function readGoogleGmailMessage(messageId) {
+  const readerBox = document.getElementById("gwsGmailReader");
+
+  if (!readerBox) return;
+
+  readerBox.className = "gws-mail-reader";
+  readerBox.innerHTML = `Завантажуємо лист...`;
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/gmail/read/${encodeURIComponent(messageId)}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      readerBox.innerHTML = `
+        <h4>Помилка</h4>
+        <div class="gws-mail-reader-body">
+          ${gwsMailEscape(data.error || "Не вдалося прочитати лист.")}
+        </div>
+      `;
+      return;
+    }
+
+    const mail = data.message || {};
+
+    readerBox.innerHTML = `
+      <h4>${gwsMailEscape(mail.subject || "(без теми)")}</h4>
+
+      <div class="gws-mail-reader-meta">
+        <div><b>Від:</b> ${gwsMailEscape(mail.from || "")}</div>
+        <div><b>Кому:</b> ${gwsMailEscape(mail.to || "")}</div>
+        <div><b>Дата:</b> ${gwsMailEscape(mail.date || "")}</div>
+      </div>
+
+      <div class="gws-mail-reader-body">
+        ${gwsMailEscape(mail.body || mail.snippet || "Тіло листа порожнє або недоступне.")}
+      </div>
+    `;
+
+  } catch (error) {
+    console.error("Gmail read error:", error);
+
+    readerBox.innerHTML = `
+      <h4>Помилка</h4>
+      <div class="gws-mail-reader-body">
+        Помилка читання листа. Перевірте /api/google/gmail/read.
+      </div>
+    `;
+  }
+}
+
+if (gwsGmailPanel) {
+  renderGwsGmailBase();
+}
+
+gwsGmailTab?.addEventListener("click", () => {
+  setTimeout(() => {
+    renderGwsGmailBase();
+    loadGoogleGmailToHub();
+  }, 100);
+});
+
 })();
