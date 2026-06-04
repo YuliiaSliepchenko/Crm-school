@@ -2955,3 +2955,226 @@ body.gws-lock .gws-hub,
 body.gws-lock .gws-hub *{
   pointer-events:auto;
 }
+
+/* ===== GOOGLE HUB FILE LIST ===== */
+
+.gws-actions-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.gws-files-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+  gap:14px;
+  margin-top:16px;
+}
+
+.gws-file-card{
+  background:#fff;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:20px;
+  padding:16px;
+  box-shadow:0 12px 30px rgba(15,23,42,.06);
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.gws-file-card__top{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.gws-file-card__icon{
+  width:44px;
+  height:44px;
+  min-width:44px;
+  border-radius:15px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg, rgba(35,178,107,.16), rgba(108,92,231,.12));
+  font-size:22px;
+}
+
+.gws-file-card h4{
+  margin:0;
+  color:#172033;
+  font-size:16px;
+  font-weight:950;
+  line-height:1.25;
+}
+
+.gws-file-card p{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:13px;
+  font-weight:750;
+}
+
+.gws-file-card__actions{
+  display:flex;
+  gap:8px;
+  margin-top:auto;
+}
+
+.gws-file-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:100%;
+  min-height:40px;
+  border-radius:12px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf3;
+  color:#0f7a4d;
+  text-decoration:none;
+  font-weight:950;
+}
+
+.gws-file-link:hover{
+  background:#36c38d;
+  color:#fff;
+}
+
+.gws-status-line{
+  padding:16px;
+  border-radius:18px;
+  background:#fff;
+  border:1px dashed #cbd5e1;
+  color:#64748b;
+  font-weight:850;
+}
+
+/* ===== GOOGLE HUB CALENDAR ===== */
+
+.gws-calendar-layout{
+  display:grid;
+  grid-template-columns:1fr 360px;
+  gap:16px;
+  align-items:start;
+}
+
+.gws-calendar-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:16px;
+}
+
+.gws-calendar-card{
+  background:#fff;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:20px;
+  padding:16px;
+  box-shadow:0 12px 30px rgba(15,23,42,.06);
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.gws-calendar-date{
+  width:66px;
+  min-width:66px;
+  border-radius:18px;
+  padding:10px 8px;
+  text-align:center;
+  background:linear-gradient(135deg, rgba(108,92,231,.12), rgba(0,212,170,.14));
+  border:1px solid rgba(226,232,240,.9);
+  color:#172033;
+  font-weight:950;
+}
+
+.gws-calendar-date b{
+  display:block;
+  font-size:22px;
+  line-height:1;
+}
+
+.gws-calendar-date span{
+  display:block;
+  margin-top:4px;
+  font-size:12px;
+  color:#64748b;
+}
+
+.gws-calendar-info h4{
+  margin:0 0 6px;
+  color:#172033;
+  font-size:17px;
+  font-weight:950;
+}
+
+.gws-calendar-info p{
+  margin:0 0 8px;
+  color:#64748b;
+  font-weight:750;
+}
+
+.gws-calendar-link{
+  color:#0f7a4d;
+  font-weight:950;
+  text-decoration:none;
+}
+
+.gws-calendar-link:hover{
+  text-decoration:underline;
+}
+
+.gws-calendar-form{
+  background:#fff;
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:22px;
+  padding:18px;
+  box-shadow:0 12px 30px rgba(15,23,42,.06);
+}
+
+.gws-calendar-form h4{
+  margin:0 0 14px;
+  color:#172033;
+  font-size:18px;
+  font-weight:950;
+}
+
+.gws-calendar-form label{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  margin-bottom:12px;
+  color:#64748b;
+  font-weight:900;
+  font-size:13px;
+}
+
+.gws-calendar-form input,
+.gws-calendar-form textarea{
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:14px;
+  padding:12px;
+  font-family:inherit;
+  font-weight:750;
+  outline:none;
+  background:#f8fbff;
+}
+
+.gws-calendar-form textarea{
+  min-height:90px;
+  resize:vertical;
+}
+
+.gws-calendar-form input:focus,
+.gws-calendar-form textarea:focus{
+  border-color:#86efac;
+  box-shadow:0 0 0 4px rgba(35,178,107,.12);
+  background:#fff;
+}
+
+@media (max-width:1000px){
+  .gws-calendar-layout{
+    grid-template-columns:1fr;
+  }
+}

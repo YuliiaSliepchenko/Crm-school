@@ -4234,4 +4234,423 @@ gwsGeminiBtn?.addEventListener("click", async () => {
   }
 })();
 
+/* ===== GOOGLE HUB: SHEETS REAL DATA ===== */
+
+const gwsSheetsPanel = document.querySelector('[data-gws-panel="sheets"]');
+const gwsSheetsTab = document.querySelector('[data-gws-tab="sheets"]');
+
+function gwsEscapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function gwsFormatDate(value) {
+  if (!value) return "Дата невідома";
+
+  try {
+    return new Date(value).toLocaleString("uk-UA", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return value;
+  }
+}
+
+function renderGwsSheetsBase() {
+  if (!gwsSheetsPanel) return;
+
+  gwsSheetsPanel.innerHTML = `
+    <div class="gws-panel__head">
+      <div>
+        <h3>Google Sheets</h3>
+        <p>Таблиці з вашого Google Drive. Можна відкрити, редагувати або створити CRM-таблицю.</p>
+      </div>
+
+      <div class="gws-actions-row">
+        <button id="gwsRefreshSheetsBtn" class="btn btn-primary" type="button">
+          🔄 Оновити таблиці
+        </button>
+
+        <button id="gwsCreateSheetBtn" class="btn btn-primary" type="button">
+          ➕ Створити CRM-таблицю
+        </button>
+      </div>
+    </div>
+
+    <div id="gwsSheetsStatus" class="gws-status-line">
+      Натисніть “Оновити таблиці”, щоб підтягнути Google Sheets.
+    </div>
+
+    <div id="gwsSheetsList" class="gws-files-grid"></div>
+  `;
+
+  document.getElementById("gwsRefreshSheetsBtn")?.addEventListener("click", loadGoogleSheetsToHub);
+  document.getElementById("gwsCreateSheetBtn")?.addEventListener("click", createGoogleSheetFromHub);
+}
+
+async function loadGoogleSheetsToHub() {
+  const statusBox = document.getElementById("gwsSheetsStatus");
+  const listBox = document.getElementById("gwsSheetsList");
+
+  if (!statusBox || !listBox) return;
+
+  statusBox.textContent = "Завантажуємо таблиці з Google Drive...";
+  listBox.innerHTML = "";
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/drive/files?type=sheets&page_size=50`);
+    const data = await res.json();
+
+    if (!data.success) {
+      statusBox.textContent = data.error || "Не вдалося отримати Google Sheets.";
+      return;
+    }
+
+    const files = data.files || [];
+
+    if (!files.length) {
+      statusBox.textContent = "Таблиць поки не знайдено. Можете створити першу CRM-таблицю.";
+      return;
+    }
+
+    statusBox.textContent = `Знайдено таблиць: ${files.length}`;
+
+    listBox.innerHTML = files.map(file => `
+      <article class="gws-file-card">
+        <div class="gws-file-card__top">
+          <div class="gws-file-card__icon">📊</div>
+          <div>
+            <h4>${gwsEscapeHtml(file.name)}</h4>
+            <p>Оновлено: ${gwsEscapeHtml(gwsFormatDate(file.modifiedTime))}</p>
+          </div>
+        </div>
+
+        <div class="gws-file-card__actions">
+          <a class="gws-file-link" href="${gwsEscapeHtml(file.webViewLink)}" target="_blank" rel="noopener">
+            Відкрити / редагувати
+          </a>
+        </div>
+      </article>
+    `).join("");
+
+  } catch (error) {
+    console.error("Sheets load error:", error);
+    statusBox.textContent = "Помилка завантаження таблиць. Перевірте Railway backend.";
+  }
+}
+
+async function createGoogleSheetFromHub() {
+  const statusBox = document.getElementById("gwsSheetsStatus");
+
+  const title = prompt("Назва нової Google-таблиці:", "ItEnAi CRM — Ліди");
+
+  if (!title) return;
+
+  if (statusBox) {
+    statusBox.textContent = "Створюємо Google-таблицю...";
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/sheets/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ title })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      if (statusBox) {
+        statusBox.textContent = data.error || "Не вдалося створити таблицю.";
+      }
+      return;
+    }
+
+    if (statusBox) {
+      statusBox.textContent = `Таблицю створено: ${data.title}`;
+    }
+
+    if (data.spreadsheetUrl) {
+      window.open(data.spreadsheetUrl, "_blank", "noopener");
+    }
+
+    await loadGoogleSheetsToHub();
+
+  } catch (error) {
+    console.error("Sheets create error:", error);
+
+    if (statusBox) {
+      statusBox.textContent = "Помилка створення таблиці. Перевірте /api/google/sheets/create.";
+    }
+  }
+}
+
+if (gwsSheetsPanel) {
+  renderGwsSheetsBase();
+}
+
+gwsSheetsTab?.addEventListener("click", () => {
+  setTimeout(() => {
+    renderGwsSheetsBase();
+    loadGoogleSheetsToHub();
+  }, 100);
+});
+
+/* ===== GOOGLE HUB: CALENDAR REAL DATA ===== */
+
+const gwsCalendarPanel = document.querySelector('[data-gws-panel="calendar"]');
+const gwsCalendarTab = document.querySelector('[data-gws-tab="calendar"]');
+
+function gwsCalEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function gwsCalDateInfo(start) {
+  const raw = start?.dateTime || start?.date;
+
+  if (!raw) {
+    return {
+      day: "--",
+      month: "Дата",
+      full: "Дата невідома"
+    };
+  }
+
+  const date = new Date(raw);
+
+  return {
+    day: date.toLocaleDateString("uk-UA", { day: "2-digit" }),
+    month: date.toLocaleDateString("uk-UA", { month: "short" }),
+    full: date.toLocaleString("uk-UA", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+  };
+}
+
+function renderGwsCalendarBase() {
+  if (!gwsCalendarPanel) return;
+
+  gwsCalendarPanel.innerHTML = `
+    <div class="gws-panel__head">
+      <div>
+        <h3>Google Calendar</h3>
+        <p>Події та уроки з вашого Google Calendar. Можна переглядати й створювати нові події.</p>
+      </div>
+
+      <div class="gws-actions-row">
+        <button id="gwsRefreshCalendarBtn" class="btn btn-primary" type="button">
+          🔄 Синхронізувати
+        </button>
+      </div>
+    </div>
+
+    <div class="gws-calendar-layout">
+      <div>
+        <div id="gwsCalendarStatus" class="gws-status-line">
+          Натисніть “Синхронізувати”, щоб підтягнути події з Google Calendar.
+        </div>
+
+        <div id="gwsCalendarList" class="gws-calendar-list"></div>
+      </div>
+
+      <form id="gwsCalendarCreateForm" class="gws-calendar-form">
+        <h4>➕ Створити подію / урок</h4>
+
+        <label>
+          Назва події
+          <input id="gwsCalendarTitle" type="text" placeholder="Урок Roblox з Артемом" required>
+        </label>
+
+        <label>
+          Опис
+          <textarea id="gwsCalendarDescription" placeholder="Тема уроку, Zoom, коментар..."></textarea>
+        </label>
+
+        <label>
+          Локація
+          <input id="gwsCalendarLocation" type="text" placeholder="Zoom / Google Meet / офлайн">
+        </label>
+
+        <label>
+          Початок
+          <input id="gwsCalendarStart" type="datetime-local" required>
+        </label>
+
+        <label>
+          Кінець
+          <input id="gwsCalendarEnd" type="datetime-local" required>
+        </label>
+
+        <button class="btn btn-primary" type="submit" style="width:100%;">
+          📅 Створити в Google Calendar
+        </button>
+      </form>
+    </div>
+  `;
+
+  document.getElementById("gwsRefreshCalendarBtn")?.addEventListener("click", loadGoogleCalendarToHub);
+  document.getElementById("gwsCalendarCreateForm")?.addEventListener("submit", createGoogleCalendarEventFromHub);
+}
+
+async function loadGoogleCalendarToHub() {
+  const statusBox = document.getElementById("gwsCalendarStatus");
+  const listBox = document.getElementById("gwsCalendarList");
+
+  if (!statusBox || !listBox) return;
+
+  statusBox.textContent = "Завантажуємо події з Google Calendar...";
+  listBox.innerHTML = "";
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/calendar/list?max_results=30`);
+    const data = await res.json();
+
+    if (!data.success) {
+      statusBox.textContent = data.error || "Не вдалося отримати події календаря.";
+      return;
+    }
+
+    const events = data.events || [];
+
+    if (!events.length) {
+      statusBox.textContent = "Майбутніх подій поки немає. Створіть першу подію через форму справа.";
+      return;
+    }
+
+    statusBox.textContent = `Знайдено подій: ${events.length}`;
+
+    listBox.innerHTML = events.map(event => {
+      const date = gwsCalDateInfo(event.start);
+
+      return `
+        <article class="gws-calendar-card">
+          <div class="gws-calendar-date">
+            <b>${gwsCalEscape(date.day)}</b>
+            <span>${gwsCalEscape(date.month)}</span>
+          </div>
+
+          <div class="gws-calendar-info">
+            <h4>${gwsCalEscape(event.summary)}</h4>
+            <p>${gwsCalEscape(date.full)}</p>
+
+            ${event.location ? `<p>📍 ${gwsCalEscape(event.location)}</p>` : ""}
+            ${event.description ? `<p>${gwsCalEscape(event.description)}</p>` : ""}
+
+            ${event.htmlLink ? `
+              <a class="gws-calendar-link" href="${gwsCalEscape(event.htmlLink)}" target="_blank" rel="noopener">
+                Відкрити в Google Calendar
+              </a>
+            ` : ""}
+          </div>
+        </article>
+      `;
+    }).join("");
+
+  } catch (error) {
+    console.error("Calendar load error:", error);
+    statusBox.textContent = "Помилка завантаження календаря. Перевірте Railway backend.";
+  }
+}
+
+function gwsLocalDatetimeToIso(value) {
+  if (!value) return "";
+  return new Date(value).toISOString();
+}
+
+async function createGoogleCalendarEventFromHub(e) {
+  e.preventDefault();
+
+  const statusBox = document.getElementById("gwsCalendarStatus");
+
+  const title = document.getElementById("gwsCalendarTitle")?.value.trim();
+  const description = document.getElementById("gwsCalendarDescription")?.value.trim();
+  const location = document.getElementById("gwsCalendarLocation")?.value.trim();
+  const start = document.getElementById("gwsCalendarStart")?.value;
+  const end = document.getElementById("gwsCalendarEnd")?.value;
+
+  if (!title || !start || !end) {
+    if (statusBox) statusBox.textContent = "Заповніть назву, початок і кінець події.";
+    return;
+  }
+
+  if (new Date(end) <= new Date(start)) {
+    if (statusBox) statusBox.textContent = "Кінець події має бути пізніше початку.";
+    return;
+  }
+
+  if (statusBox) {
+    statusBox.textContent = "Створюємо подію в Google Calendar...";
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/calendar/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        summary: title,
+        description: description || "",
+        location: location || "",
+        start: gwsLocalDatetimeToIso(start),
+        end: gwsLocalDatetimeToIso(end)
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      if (statusBox) {
+        statusBox.textContent = data.error || "Не вдалося створити подію.";
+      }
+      return;
+    }
+
+    if (statusBox) {
+      statusBox.textContent = "Подію створено в Google Calendar ✅";
+    }
+
+    document.getElementById("gwsCalendarCreateForm")?.reset();
+
+    await loadGoogleCalendarToHub();
+
+  } catch (error) {
+    console.error("Calendar create error:", error);
+
+    if (statusBox) {
+      statusBox.textContent = "Помилка створення події. Перевірте /api/google/calendar/create.";
+    }
+  }
+}
+
+if (gwsCalendarPanel) {
+  renderGwsCalendarBase();
+}
+
+gwsCalendarTab?.addEventListener("click", () => {
+  setTimeout(() => {
+    renderGwsCalendarBase();
+    loadGoogleCalendarToHub();
+  }, 100);
+});
+
 })();
