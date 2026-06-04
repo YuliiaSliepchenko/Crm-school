@@ -4948,4 +4948,364 @@ gwsGmailTab?.addEventListener("click", () => {
   }, 100);
 });
 
+/* ===== GOOGLE HUB: DOCS REAL DATA ===== */
+
+const gwsDocsPanel = document.querySelector('[data-gws-panel="docs"]');
+const gwsDocsTab = document.querySelector('[data-gws-tab="docs"]');
+
+function gwsDocsEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function gwsDocsFormatDate(value) {
+  if (!value) return "Дата невідома";
+
+  try {
+    return new Date(value).toLocaleString("uk-UA", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return value;
+  }
+}
+
+function renderGwsDocsBase() {
+  if (!gwsDocsPanel) return;
+
+  gwsDocsPanel.innerHTML = `
+    <div class="gws-panel__head">
+      <div>
+        <h3>Google Docs</h3>
+        <p>Документи з Google Drive. Можна створити документ, відкрити його та редагувати в Google Docs.</p>
+      </div>
+
+      <div class="gws-actions-row">
+        <button id="gwsRefreshDocsBtn" class="btn btn-primary" type="button">
+          🔄 Оновити документи
+        </button>
+
+        <button id="gwsCreateDocBtn" class="btn btn-primary" type="button">
+          ➕ Створити документ
+        </button>
+      </div>
+    </div>
+
+    <div id="gwsDocsStatus" class="gws-status-line">
+      Натисніть “Оновити документи”, щоб підтягнути Google Docs.
+    </div>
+
+    <div id="gwsDocsList" class="gws-files-grid"></div>
+  `;
+
+  document.getElementById("gwsRefreshDocsBtn")?.addEventListener("click", loadGoogleDocsToHub);
+  document.getElementById("gwsCreateDocBtn")?.addEventListener("click", createGoogleDocFromHub);
+}
+
+async function loadGoogleDocsToHub() {
+  const statusBox = document.getElementById("gwsDocsStatus");
+  const listBox = document.getElementById("gwsDocsList");
+
+  if (!statusBox || !listBox) return;
+
+  statusBox.textContent = "Завантажуємо документи з Google Drive...";
+  listBox.innerHTML = "";
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/drive/files?type=docs&page_size=50`);
+    const data = await res.json();
+
+    if (!data.success) {
+      statusBox.textContent = data.error || "Не вдалося отримати Google Docs.";
+      return;
+    }
+
+    const files = data.files || [];
+
+    if (!files.length) {
+      statusBox.textContent = "Документів поки не знайдено. Можете створити перший документ.";
+      return;
+    }
+
+    statusBox.textContent = `Знайдено документів: ${files.length}`;
+
+    listBox.innerHTML = files.map(file => `
+      <article class="gws-file-card">
+        <div class="gws-file-card__top">
+          <div class="gws-file-card__icon">📄</div>
+          <div>
+            <h4>${gwsDocsEscape(file.name)}</h4>
+            <p>Оновлено: ${gwsDocsEscape(gwsDocsFormatDate(file.modifiedTime))}</p>
+          </div>
+        </div>
+
+        <div class="gws-file-card__actions">
+          <a class="gws-file-link" href="${gwsDocsEscape(file.webViewLink)}" target="_blank" rel="noopener">
+            Відкрити / редагувати
+          </a>
+        </div>
+      </article>
+    `).join("");
+
+  } catch (error) {
+    console.error("Docs load error:", error);
+    statusBox.textContent = "Помилка завантаження документів. Перевірте Railway backend.";
+  }
+}
+
+async function createGoogleDocFromHub() {
+  const statusBox = document.getElementById("gwsDocsStatus");
+
+  const title = prompt("Назва нового Google-документа:", "ItEnAi CRM — Документ");
+
+  if (!title) return;
+
+  const text = prompt("Початковий текст документа, можна залишити порожнім:", "");
+
+  if (statusBox) {
+    statusBox.textContent = "Створюємо Google-документ...";
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/docs/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        text: text || ""
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      if (statusBox) {
+        statusBox.textContent = data.error || "Не вдалося створити документ.";
+      }
+      return;
+    }
+
+    if (statusBox) {
+      statusBox.textContent = `Документ створено: ${data.title}`;
+    }
+
+    if (data.documentUrl) {
+      window.open(data.documentUrl, "_blank", "noopener");
+    }
+
+    await loadGoogleDocsToHub();
+
+  } catch (error) {
+    console.error("Docs create error:", error);
+
+    if (statusBox) {
+      statusBox.textContent = "Помилка створення документа. Перевірте /api/google/docs/create.";
+    }
+  }
+}
+
+if (gwsDocsPanel) {
+  renderGwsDocsBase();
+}
+
+gwsDocsTab?.addEventListener("click", () => {
+  setTimeout(() => {
+    renderGwsDocsBase();
+    loadGoogleDocsToHub();
+  }, 100);
+});
+
+/* ===== GOOGLE HUB: SLIDES REAL DATA ===== */
+
+const gwsSlidesPanel = document.querySelector('[data-gws-panel="slides"]');
+const gwsSlidesTab = document.querySelector('[data-gws-tab="slides"]');
+
+function gwsSlidesEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function gwsSlidesFormatDate(value) {
+  if (!value) return "Дата невідома";
+
+  try {
+    return new Date(value).toLocaleString("uk-UA", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return value;
+  }
+}
+
+function renderGwsSlidesBase() {
+  if (!gwsSlidesPanel) return;
+
+  gwsSlidesPanel.innerHTML = `
+    <div class="gws-panel__head">
+      <div>
+        <h3>Google Slides</h3>
+        <p>Презентації з Google Drive. Можна створити презентацію, відкрити її в Google Slides або скачати як PowerPoint.</p>
+      </div>
+
+      <div class="gws-actions-row">
+        <button id="gwsRefreshSlidesBtn" class="btn btn-primary" type="button">
+          🔄 Оновити презентації
+        </button>
+
+        <button id="gwsCreateSlidesBtn" class="btn btn-primary" type="button">
+          ➕ Створити презентацію
+        </button>
+      </div>
+    </div>
+
+    <div id="gwsSlidesStatus" class="gws-status-line">
+      Натисніть “Оновити презентації”, щоб підтягнути Google Slides.
+    </div>
+
+    <div id="gwsSlidesList" class="gws-files-grid"></div>
+  `;
+
+  document.getElementById("gwsRefreshSlidesBtn")?.addEventListener("click", loadGoogleSlidesToHub);
+  document.getElementById("gwsCreateSlidesBtn")?.addEventListener("click", createGoogleSlidesFromHub);
+}
+
+async function loadGoogleSlidesToHub() {
+  const statusBox = document.getElementById("gwsSlidesStatus");
+  const listBox = document.getElementById("gwsSlidesList");
+
+  if (!statusBox || !listBox) return;
+
+  statusBox.textContent = "Завантажуємо презентації з Google Drive...";
+  listBox.innerHTML = "";
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/drive/files?type=slides&page_size=50`);
+    const data = await res.json();
+
+    if (!data.success) {
+      statusBox.textContent = data.error || "Не вдалося отримати Google Slides.";
+      return;
+    }
+
+    const files = data.files || [];
+
+    if (!files.length) {
+      statusBox.textContent = "Презентацій поки не знайдено. Можете створити першу презентацію.";
+      return;
+    }
+
+    statusBox.textContent = `Знайдено презентацій: ${files.length}`;
+
+    listBox.innerHTML = files.map(file => `
+      <article class="gws-file-card">
+        <div class="gws-file-card__top">
+          <div class="gws-file-card__icon">🎞️</div>
+          <div>
+            <h4>${gwsSlidesEscape(file.name)}</h4>
+            <p>Оновлено: ${gwsSlidesEscape(gwsSlidesFormatDate(file.modifiedTime))}</p>
+          </div>
+        </div>
+
+        <div class="gws-file-card__actions gws-slides-actions">
+          <a class="gws-file-link" href="${gwsSlidesEscape(file.webViewLink)}" target="_blank" rel="noopener">
+            Відкрити / редагувати
+          </a>
+
+          <a 
+            class="gws-file-link gws-file-pptx" 
+            href="${GOOGLE_BACKEND_URL}/api/google/slides/export-pptx/${encodeURIComponent(file.id)}" 
+            target="_blank" 
+            rel="noopener"
+          >
+            ⬇️ PowerPoint
+          </a>
+        </div>
+      </article>
+    `).join("");
+
+  } catch (error) {
+    console.error("Slides load error:", error);
+    statusBox.textContent = "Помилка завантаження презентацій. Перевірте Railway backend.";
+  }
+}
+
+async function createGoogleSlidesFromHub() {
+  const statusBox = document.getElementById("gwsSlidesStatus");
+
+  const title = prompt("Назва нової Google Slides презентації:", "ItEnAi CRM — Презентація");
+
+  if (!title) return;
+
+  if (statusBox) {
+    statusBox.textContent = "Створюємо Google Slides презентацію...";
+  }
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/slides/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      if (statusBox) {
+        statusBox.textContent = data.error || "Не вдалося створити презентацію.";
+      }
+      return;
+    }
+
+    if (statusBox) {
+      statusBox.textContent = `Презентацію створено: ${data.title}`;
+    }
+
+    if (data.presentationUrl) {
+      window.open(data.presentationUrl, "_blank", "noopener");
+    }
+
+    await loadGoogleSlidesToHub();
+
+  } catch (error) {
+    console.error("Slides create error:", error);
+
+    if (statusBox) {
+      statusBox.textContent = "Помилка створення презентації. Перевірте /api/google/slides/create.";
+    }
+  }
+}
+
+if (gwsSlidesPanel) {
+  renderGwsSlidesBase();
+}
+
+gwsSlidesTab?.addEventListener("click", () => {
+  setTimeout(() => {
+    renderGwsSlidesBase();
+    loadGoogleSlidesToHub();
+  }, 100);
+});
+
 })();

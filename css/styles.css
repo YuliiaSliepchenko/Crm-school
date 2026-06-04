@@ -3416,3 +3416,25 @@ body.gws-lock .gws-hub *{
     top:auto;
   }
 }
+
+.gws-nav-card{
+  width:100%;
+}
+
+.gws-slides-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.gws-file-pptx{
+  background:#fff7ed;
+  border-color:#fed7aa;
+  color:#c2410c;
+}
+
+.gws-file-pptx:hover{
+  background:#f97316;
+  border-color:#f97316;
+  color:#fff;
+}
