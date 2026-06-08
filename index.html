@@ -1020,11 +1020,36 @@
               <label>
                 Мова перекладу
                 <select id="gwsTranslateLang">
-                  <option value="uk">Українська</option>
-                  <option value="en">Англійська</option>
-                  <option value="pl">Польська</option>
-                  <option value="de">Німецька</option>
-                </select>
+  <option value="uk">Українська</option>
+  <option value="en">Англійська</option>
+  <option value="pl">Польська</option>
+  <option value="de">Німецька</option>
+  <option value="fr">Французька</option>
+  <option value="es">Іспанська</option>
+  <option value="it">Італійська</option>
+  <option value="pt">Португальська</option>
+  <option value="ro">Румунська</option>
+  <option value="cs">Чеська</option>
+  <option value="sk">Словацька</option>
+  <option value="hu">Угорська</option>
+  <option value="nl">Нідерландська</option>
+  <option value="sv">Шведська</option>
+  <option value="no">Норвезька</option>
+  <option value="da">Данська</option>
+  <option value="fi">Фінська</option>
+  <option value="tr">Турецька</option>
+  <option value="el">Грецька</option>
+  <option value="bg">Болгарська</option>
+  <option value="lt">Литовська</option>
+  <option value="lv">Латвійська</option>
+  <option value="et">Естонська</option>
+  <option value="ka">Грузинська</option>
+  <option value="ja">Японська</option>
+  <option value="ko">Корейська</option>
+  <option value="zh">Китайська</option>
+  <option value="ar">Арабська</option>
+  <option value="he">Іврит</option>
+</select>
               </label>
 
               <button id="gwsTranslateBtn" class="btn btn-primary" type="button">
@@ -1036,6 +1061,23 @@
           <div id="gwsTranslateResult" class="gws-result">
             Результат перекладу буде тут.
           </div>
+
+          <div class="gws-history">
+  <div class="gws-history__head">
+    <div>
+      <h4>Історія перекладів</h4>
+      <p>Останні переклади зберігаються тут.</p>
+    </div>
+
+    <button id="gwsClearTranslateHistoryBtn" class="btn btn-ghost gws-history-clear" type="button">
+      🧹 Очистити історію
+    </button>
+  </div>
+
+  <div id="gwsTranslateHistory" class="gws-history__list">
+    <div class="gws-history-empty">Історії перекладів поки немає.</div>
+  </div>
+</div>
         </section>
 
         <section class="gws-panel" data-gws-panel="gemini">
@@ -1055,6 +1097,22 @@
           <div id="gwsGeminiResult" class="gws-result">
             AI-відповідь буде тут.
           </div>
+          <div class="gws-history">
+  <div class="gws-history__head">
+    <div>
+      <h4>Історія Gemini</h4>
+      <p>Останні запити та відповіді AI-помічника.</p>
+    </div>
+
+    <button id="gwsClearGeminiHistoryBtn" class="btn btn-ghost gws-history-clear" type="button">
+      🧹 Очистити історію
+    </button>
+  </div>
+
+  <div id="gwsGeminiHistory" class="gws-history__list">
+    <div class="gws-history-empty">Історії Gemini поки немає.</div>
+  </div>
+</div>
         </section>
 
         <section class="gws-panel" data-gws-panel="calendar">

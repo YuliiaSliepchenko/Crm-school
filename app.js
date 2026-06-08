@@ -4131,6 +4131,301 @@ const gwsTranslateBtn = document.getElementById("gwsTranslateBtn");
 const gwsTranslateInput = document.getElementById("gwsTranslateInput");
 const gwsTranslateLang = document.getElementById("gwsTranslateLang");
 const gwsTranslateResult = document.getElementById("gwsTranslateResult");
+const gwsTranslateHistory = document.getElementById("gwsTranslateHistory");
+const gwsGeminiHistory = document.getElementById("gwsGeminiHistory");
+const gwsClearTranslateHistoryBtn = document.getElementById("gwsClearTranslateHistoryBtn");
+const gwsClearGeminiHistoryBtn = document.getElementById("gwsClearGeminiHistoryBtn");
+
+const GWS_TRANSLATE_HISTORY_KEY = "itenai_gws_translate_history_v1";
+const GWS_GEMINI_HISTORY_KEY = "itenai_gws_gemini_history_v1";
+const GWS_HISTORY_LIMIT = 50;
+
+function gwsHistoryId() {
+  return "hist_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function gwsLoadHistory(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function gwsSaveHistory(key, list) {
+  localStorage.setItem(key, JSON.stringify(list.slice(0, GWS_HISTORY_LIMIT)));
+}
+
+function gwsShortText(text, limit = 180) {
+  const value = String(text || "").trim();
+  if (value.length <= limit) return value;
+  return value.slice(0, limit) + "...";
+}
+
+function gwsFormatHistoryDate(ts) {
+  try {
+    return new Date(ts).toLocaleString("uk-UA", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return "";
+  }
+}
+
+function gwsCopyText(text) {
+  const value = String(text || "");
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
+function addGwsTranslateHistoryItem(input, target, result) {
+  const list = gwsLoadHistory(GWS_TRANSLATE_HISTORY_KEY);
+
+  list.unshift({
+    id: gwsHistoryId(),
+    createdAt: Date.now(),
+    input,
+    target,
+    result
+  });
+
+  gwsSaveHistory(GWS_TRANSLATE_HISTORY_KEY, list);
+  renderGwsTranslateHistory();
+}
+
+function addGwsGeminiHistoryItem(prompt, answer) {
+  const list = gwsLoadHistory(GWS_GEMINI_HISTORY_KEY);
+
+  list.unshift({
+    id: gwsHistoryId(),
+    createdAt: Date.now(),
+    prompt,
+    answer
+  });
+
+  gwsSaveHistory(GWS_GEMINI_HISTORY_KEY, list);
+  renderGwsGeminiHistory();
+}
+
+function deleteGwsHistoryItem(key, id, renderFn) {
+  const list = gwsLoadHistory(key).filter(item => item.id !== id);
+  gwsSaveHistory(key, list);
+  renderFn();
+}
+
+function clearGwsHistory(key, renderFn, message) {
+  if (!confirm(message)) return;
+  localStorage.removeItem(key);
+  renderFn();
+}
+
+function renderGwsTranslateHistory() {
+  if (!gwsTranslateHistory) return;
+
+  const list = gwsLoadHistory(GWS_TRANSLATE_HISTORY_KEY);
+
+  if (!list.length) {
+    gwsTranslateHistory.innerHTML = `
+      <div class="gws-history-empty">Історії перекладів поки немає.</div>
+    `;
+    return;
+  }
+
+  gwsTranslateHistory.innerHTML = list.map(item => `
+    <div class="gws-history-card">
+      <div class="gws-history-card__top">
+        <div>
+          <b>🌍 Переклад → ${gwsEscapeHtml(item.target || "uk")}</b>
+          <span>${gwsFormatHistoryDate(item.createdAt)}</span>
+        </div>
+
+        <button 
+          class="gws-history-delete" 
+          type="button" 
+          data-history-type="translate" 
+          data-history-id="${gwsEscapeHtml(item.id)}"
+        >
+          🗑
+        </button>
+      </div>
+
+      <div class="gws-history-card__block">
+        <small>Оригінал</small>
+        <p>${gwsEscapeHtml(gwsShortText(item.input))}</p>
+      </div>
+
+      <div class="gws-history-card__block is-result">
+        <small>Переклад</small>
+        <p>${gwsEscapeHtml(gwsShortText(item.result, 260))}</p>
+      </div>
+
+      <div class="gws-history-card__actions">
+        <button 
+          class="gws-history-copy" 
+          type="button" 
+          data-copy-text="${gwsEscapeHtml(item.result)}"
+        >
+          📋 Скопіювати результат
+        </button>
+
+        <button 
+          class="gws-history-restore" 
+          type="button" 
+          data-restore-type="translate" 
+          data-history-id="${gwsEscapeHtml(item.id)}"
+        >
+          ↩️ Повернути в поле
+        </button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderGwsGeminiHistory() {
+  if (!gwsGeminiHistory) return;
+
+  const list = gwsLoadHistory(GWS_GEMINI_HISTORY_KEY);
+
+  if (!list.length) {
+    gwsGeminiHistory.innerHTML = `
+      <div class="gws-history-empty">Історії Gemini поки немає.</div>
+    `;
+    return;
+  }
+
+  gwsGeminiHistory.innerHTML = list.map(item => `
+    <div class="gws-history-card">
+      <div class="gws-history-card__top">
+        <div>
+          <b>🧠 Gemini запит</b>
+          <span>${gwsFormatHistoryDate(item.createdAt)}</span>
+        </div>
+
+        <button 
+          class="gws-history-delete" 
+          type="button" 
+          data-history-type="gemini" 
+          data-history-id="${gwsEscapeHtml(item.id)}"
+        >
+          🗑
+        </button>
+      </div>
+
+      <div class="gws-history-card__block">
+        <small>Запит</small>
+        <p>${gwsEscapeHtml(gwsShortText(item.prompt))}</p>
+      </div>
+
+      <div class="gws-history-card__block is-result">
+        <small>Відповідь</small>
+        <p>${gwsEscapeHtml(gwsShortText(item.answer, 320))}</p>
+      </div>
+
+      <div class="gws-history-card__actions">
+        <button 
+          class="gws-history-copy" 
+          type="button" 
+          data-copy-text="${gwsEscapeHtml(item.answer)}"
+        >
+          📋 Скопіювати відповідь
+        </button>
+
+        <button 
+          class="gws-history-restore" 
+          type="button" 
+          data-restore-type="gemini" 
+          data-history-id="${gwsEscapeHtml(item.id)}"
+        >
+          ↩️ Повернути в поле
+        </button>
+      </div>
+    </div>
+  `).join("");
+}
+
+document.addEventListener("click", (e) => {
+  const deleteBtn = e.target.closest(".gws-history-delete");
+  if (deleteBtn) {
+    const type = deleteBtn.dataset.historyType;
+    const id = deleteBtn.dataset.historyId;
+
+    if (type === "translate") {
+      deleteGwsHistoryItem(GWS_TRANSLATE_HISTORY_KEY, id, renderGwsTranslateHistory);
+    }
+
+    if (type === "gemini") {
+      deleteGwsHistoryItem(GWS_GEMINI_HISTORY_KEY, id, renderGwsGeminiHistory);
+    }
+
+    return;
+  }
+
+  const copyBtn = e.target.closest(".gws-history-copy");
+  if (copyBtn) {
+    gwsCopyText(copyBtn.dataset.copyText || "");
+    copyBtn.textContent = "✅ Скопійовано";
+    setTimeout(() => {
+      copyBtn.textContent = copyBtn.dataset.restoreText || "📋 Скопіювати";
+    }, 900);
+    return;
+  }
+
+  const restoreBtn = e.target.closest(".gws-history-restore");
+  if (restoreBtn) {
+    const type = restoreBtn.dataset.restoreType;
+    const id = restoreBtn.dataset.historyId;
+
+    if (type === "translate") {
+      const item = gwsLoadHistory(GWS_TRANSLATE_HISTORY_KEY).find(x => x.id === id);
+      if (!item) return;
+
+      if (gwsTranslateInput) gwsTranslateInput.value = item.input || "";
+      if (gwsTranslateLang) gwsTranslateLang.value = item.target || "uk";
+      if (gwsTranslateResult) gwsTranslateResult.textContent = item.result || "";
+    }
+
+    if (type === "gemini") {
+      const item = gwsLoadHistory(GWS_GEMINI_HISTORY_KEY).find(x => x.id === id);
+      if (!item) return;
+
+      if (gwsGeminiInput) gwsGeminiInput.value = item.prompt || "";
+      if (gwsGeminiResult) gwsGeminiResult.textContent = item.answer || "";
+    }
+  }
+});
+
+gwsClearTranslateHistoryBtn?.addEventListener("click", () => {
+  clearGwsHistory(
+    GWS_TRANSLATE_HISTORY_KEY,
+    renderGwsTranslateHistory,
+    "Очистити всю історію перекладів?"
+  );
+});
+
+gwsClearGeminiHistoryBtn?.addEventListener("click", () => {
+  clearGwsHistory(
+    GWS_GEMINI_HISTORY_KEY,
+    renderGwsGeminiHistory,
+    "Очистити всю історію Gemini?"
+  );
+});
+
+renderGwsTranslateHistory();
+renderGwsGeminiHistory();
 
 gwsTranslateBtn?.addEventListener("click", async () => {
   const text = (gwsTranslateInput?.value || "").trim();
@@ -4156,13 +4451,17 @@ gwsTranslateBtn?.addEventListener("click", async () => {
 
     const data = await res.json();
 
-    if (gwsTranslateResult) {
-      gwsTranslateResult.textContent =
-        data.translation ||
-        data.translatedText ||
-        data.text ||
-        "Переклад виконано, але backend повернув незнайомий формат відповіді.";
-    }
+    const translation =
+  data.translation ||
+  data.translatedText ||
+  data.text ||
+  "Переклад виконано, але backend повернув незнайомий формат відповіді.";
+
+if (gwsTranslateResult) {
+  gwsTranslateResult.textContent = translation;
+}
+
+addGwsTranslateHistoryItem(text, target, translation);
   } catch (err) {
     if (gwsTranslateResult) {
       gwsTranslateResult.textContent =
@@ -4198,13 +4497,17 @@ gwsGeminiBtn?.addEventListener("click", async () => {
 
     const data = await res.json();
 
-    if (gwsGeminiResult) {
-      gwsGeminiResult.textContent =
-        data.answer ||
-        data.text ||
-        data.response ||
-        "Gemini відповів, але backend повернув незнайомий формат відповіді.";
-    }
+    const answer =
+  data.answer ||
+  data.text ||
+  data.response ||
+  "Gemini відповів, але backend повернув незнайомий формат відповіді.";
+
+if (gwsGeminiResult) {
+  gwsGeminiResult.textContent = answer;
+}
+
+addGwsGeminiHistoryItem(prompt, answer);
   } catch (err) {
     if (gwsGeminiResult) {
       gwsGeminiResult.textContent =
