@@ -4264,6 +4264,86 @@ function gwsFormatDate(value) {
   }
 }
 
+function gwsFileDownloadFormat(file) {
+  const mimeType = file?.mimeType || "";
+
+  if (mimeType === "application/vnd.google-apps.document") return "docx";
+  if (mimeType === "application/vnd.google-apps.spreadsheet") return "xlsx";
+  if (mimeType === "application/vnd.google-apps.presentation") return "pptx";
+
+  return "";
+}
+
+function gwsFileDownloadLabel(file) {
+  const mimeType = file?.mimeType || "";
+
+  if (mimeType === "application/vnd.google-apps.document") return "Word";
+  if (mimeType === "application/vnd.google-apps.spreadsheet") return "Excel";
+  if (mimeType === "application/vnd.google-apps.presentation") return "PowerPoint";
+  if (mimeType === "application/vnd.google-apps.folder") return "";
+  if (mimeType === "application/pdf") return "PDF";
+
+  return "Скачати";
+}
+
+function gwsFileDownloadUrl(file) {
+  if (!file?.id) return "";
+
+  const format = gwsFileDownloadFormat(file);
+  const encodedId = encodeURIComponent(file.id);
+  const encodedName = encodeURIComponent(file.name || "itenai-file");
+
+  if (format) {
+    return `${GOOGLE_BACKEND_URL}/api/google/drive/export/${encodedId}?format=${encodeURIComponent(format)}&name=${encodedName}`;
+  }
+
+  if (file.mimeType === "application/vnd.google-apps.folder") {
+    return "";
+  }
+
+  return `${GOOGLE_BACKEND_URL}/api/google/drive/download/${encodedId}`;
+}
+
+function bindGoogleFileDeleteButtons(scopeName, reloadFn) {
+  document.querySelectorAll(`[data-gws-delete="${scopeName}"]`).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const fileId = btn.dataset.fileId;
+      const fileName = btn.dataset.fileName || "цей файл";
+
+      if (!fileId) return;
+
+      const ok = confirm(`Перемістити в кошик Google Drive?\n\n${fileName}`);
+      if (!ok) return;
+
+      btn.disabled = true;
+      btn.textContent = "Видаляємо...";
+
+      try {
+        const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/drive/files/${encodeURIComponent(fileId)}`, {
+          method: "DELETE"
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          alert(data.error || "Не вдалося видалити файл.");
+          btn.disabled = false;
+          btn.textContent = "🗑 Видалити";
+          return;
+        }
+
+        await reloadFn();
+
+      } catch (error) {
+        console.error("Google Drive delete error:", error);
+        alert("Помилка видалення. Перевірте backend на Railway.");
+        btn.disabled = false;
+        btn.textContent = "🗑 Видалити";
+      }
+    });
+  });
+}
+
 function renderGwsSheetsBase() {
   if (!gwsSheetsPanel) return;
 
@@ -4333,13 +4413,33 @@ async function loadGoogleSheetsToHub() {
           </div>
         </div>
 
-        <div class="gws-file-card__actions">
-          <a class="gws-file-link" href="${gwsEscapeHtml(file.webViewLink)}" target="_blank" rel="noopener">
-            Відкрити / редагувати
-          </a>
-        </div>
+        <div class="gws-file-card__actions gws-file-actions-3">
+  <a class="gws-file-link" href="${gwsEscapeHtml(file.webViewLink)}" target="_blank" rel="noopener">
+    Відкрити
+  </a>
+
+  <a 
+    class="gws-file-link gws-file-download" 
+    href="${gwsEscapeHtml(gwsFileDownloadUrl(file))}" 
+    target="_blank" 
+    rel="noopener"
+  >
+    ⬇️ Excel
+  </a>
+
+  <button 
+    class="gws-file-link gws-file-delete" 
+    type="button"
+    data-gws-delete="sheets"
+    data-file-id="${gwsEscapeHtml(file.id)}"
+    data-file-name="${gwsEscapeHtml(file.name)}"
+  >
+    🗑 Видалити
+  </button>
+</div>
       </article>
     `).join("");
+    bindGoogleFileDeleteButtons("sheets", loadGoogleSheetsToHub);
 
   } catch (error) {
     console.error("Sheets load error:", error);
@@ -5047,13 +5147,33 @@ async function loadGoogleDocsToHub() {
           </div>
         </div>
 
-        <div class="gws-file-card__actions">
-          <a class="gws-file-link" href="${gwsDocsEscape(file.webViewLink)}" target="_blank" rel="noopener">
-            Відкрити / редагувати
-          </a>
-        </div>
+        <div class="gws-file-card__actions gws-file-actions-3">
+  <a class="gws-file-link" href="${gwsDocsEscape(file.webViewLink)}" target="_blank" rel="noopener">
+    Відкрити
+  </a>
+
+  <a 
+    class="gws-file-link gws-file-download" 
+    href="${gwsDocsEscape(gwsFileDownloadUrl(file))}" 
+    target="_blank" 
+    rel="noopener"
+  >
+    ⬇️ Word
+  </a>
+
+  <button 
+    class="gws-file-link gws-file-delete" 
+    type="button"
+    data-gws-delete="docs"
+    data-file-id="${gwsDocsEscape(file.id)}"
+    data-file-name="${gwsDocsEscape(file.name)}"
+  >
+    🗑 Видалити
+  </button>
+</div>
       </article>
     `).join("");
+    bindGoogleFileDeleteButtons("docs", loadGoogleDocsToHub);
 
   } catch (error) {
     console.error("Docs load error:", error);
@@ -5224,22 +5344,33 @@ async function loadGoogleSlidesToHub() {
           </div>
         </div>
 
-        <div class="gws-file-card__actions gws-slides-actions">
-          <a class="gws-file-link" href="${gwsSlidesEscape(file.webViewLink)}" target="_blank" rel="noopener">
-            Відкрити / редагувати
-          </a>
+        <div class="gws-file-card__actions gws-file-actions-3">
+  <a class="gws-file-link" href="${gwsSlidesEscape(file.webViewLink)}" target="_blank" rel="noopener">
+    Відкрити
+  </a>
 
-          <a 
-            class="gws-file-link gws-file-pptx" 
-            href="${GOOGLE_BACKEND_URL}/api/google/slides/export-pptx/${encodeURIComponent(file.id)}" 
-            target="_blank" 
-            rel="noopener"
-          >
-            ⬇️ PowerPoint
-          </a>
-        </div>
+  <a 
+    class="gws-file-link gws-file-download" 
+    href="${gwsSlidesEscape(gwsFileDownloadUrl(file))}" 
+    target="_blank" 
+    rel="noopener"
+  >
+    ⬇️ PowerPoint
+  </a>
+
+  <button 
+    class="gws-file-link gws-file-delete" 
+    type="button"
+    data-gws-delete="slides"
+    data-file-id="${gwsSlidesEscape(file.id)}"
+    data-file-name="${gwsSlidesEscape(file.name)}"
+  >
+    🗑 Видалити
+  </button>
+</div>
       </article>
     `).join("");
+    bindGoogleFileDeleteButtons("slides", loadGoogleSlidesToHub);
 
   } catch (error) {
     console.error("Slides load error:", error);
@@ -5496,16 +5627,33 @@ async function loadGoogleDriveToHub() {
             </div>
           </div>
 
-          <div class="gws-file-card__actions">
-            ${
-              file.webViewLink
-                ? `<a class="gws-file-link" href="${gwsDriveEscape(file.webViewLink)}" target="_blank" rel="noopener">Відкрити</a>`
-                : `<button class="gws-file-link" type="button" disabled>Недоступно</button>`
-            }
-          </div>
+          <div class="gws-file-card__actions gws-file-actions-3">
+  ${
+    file.webViewLink
+      ? `<a class="gws-file-link" href="${gwsDriveEscape(file.webViewLink)}" target="_blank" rel="noopener">Відкрити</a>`
+      : `<button class="gws-file-link" type="button" disabled>Недоступно</button>`
+  }
+
+  ${
+    gwsFileDownloadUrl(file)
+      ? `<a class="gws-file-link gws-file-download" href="${gwsDriveEscape(gwsFileDownloadUrl(file))}" target="_blank" rel="noopener">⬇️ ${gwsDriveEscape(gwsFileDownloadLabel(file))}</a>`
+      : `<button class="gws-file-link gws-file-download" type="button" disabled>Без скачування</button>`
+  }
+
+  <button 
+    class="gws-file-link gws-file-delete" 
+    type="button"
+    data-gws-delete="drive"
+    data-file-id="${gwsDriveEscape(file.id)}"
+    data-file-name="${gwsDriveEscape(file.name)}"
+  >
+    🗑 Видалити
+  </button>
+</div>
         </article>
       `;
     }).join("");
+    bindGoogleFileDeleteButtons("drive", loadGoogleDriveToHub);
 
   } catch (error) {
     console.error("Drive load error:", error);

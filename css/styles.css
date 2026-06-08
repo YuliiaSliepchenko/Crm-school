@@ -3535,3 +3535,50 @@ body.gws-lock .gws-hub *{
     grid-template-columns:1fr;
   }
 }
+
+/* ===== GOOGLE HUB FILE ACTIONS: DOWNLOAD + DELETE ===== */
+
+.gws-file-actions-3{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+}
+
+.gws-file-download{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1d4ed8;
+}
+
+.gws-file-download:hover{
+  background:#2563eb;
+  border-color:#2563eb;
+  color:#fff;
+}
+
+.gws-file-delete{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+  cursor:pointer;
+  font-family:inherit;
+}
+
+.gws-file-delete:hover{
+  background:#e11d48;
+  border-color:#e11d48;
+  color:#fff;
+}
+
+.gws-file-delete:disabled,
+.gws-file-download:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  transform:none;
+}
+
+@media (max-width:900px){
+  .gws-file-actions-3{
+    grid-template-columns:1fr;
+  }
+}
