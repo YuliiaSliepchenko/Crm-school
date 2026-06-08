@@ -3438,3 +3438,100 @@ body.gws-lock .gws-hub *{
   border-color:#f97316;
   color:#fff;
 }
+
+/* ===== GOOGLE HUB DRIVE ===== */
+
+.gws-drive-toolbar{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  margin:14px 0;
+}
+
+.gws-drive-filters{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.gws-drive-filter{
+  border:1px solid rgba(226,232,240,.95);
+  background:#fff;
+  color:#172033;
+  border-radius:999px;
+  padding:10px 14px;
+  font-family:inherit;
+  font-weight:950;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.gws-drive-filter:hover{
+  transform:translateY(-1px);
+  border-color:#86efac;
+  background:#ecfdf3;
+}
+
+.gws-drive-filter.active{
+  background:#36c38d;
+  color:#fff;
+  border-color:#36c38d;
+  box-shadow:0 12px 26px rgba(35,178,107,.22);
+}
+
+.gws-drive-search-row{
+  display:grid;
+  grid-template-columns:1fr 140px;
+  gap:10px;
+}
+
+.gws-drive-search{
+  border:1px solid rgba(226,232,240,.95);
+  border-radius:16px;
+  padding:13px 15px;
+  font-family:inherit;
+  font-weight:850;
+  outline:none;
+  background:#fff;
+}
+
+.gws-drive-search:focus{
+  border-color:#86efac;
+  box-shadow:0 0 0 4px rgba(35,178,107,.12);
+}
+
+.gws-drive-create-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+}
+
+.gws-drive-create-btn{
+  border:1px solid #bbf7d0;
+  background:#ecfdf3;
+  color:#0f7a4d;
+  border-radius:14px;
+  padding:12px 15px;
+  font-family:inherit;
+  font-weight:950;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.gws-drive-create-btn:hover{
+  background:#36c38d;
+  color:#fff;
+  transform:translateY(-1px);
+}
+
+.gws-file-link[disabled]{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+@media (max-width:800px){
+  .gws-drive-search-row{
+    grid-template-columns:1fr;
+  }
+}

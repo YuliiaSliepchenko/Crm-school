@@ -5308,4 +5308,325 @@ gwsSlidesTab?.addEventListener("click", () => {
   }, 100);
 });
 
+/* ===== GOOGLE HUB: DRIVE REAL DATA ===== */
+
+const gwsDrivePanel = document.querySelector('[data-gws-panel="drive"]');
+const gwsDriveTab = document.querySelector('[data-gws-tab="drive"]');
+
+let gwsCurrentDriveType = "all";
+
+const gwsDriveFilters = {
+  all: "Усі файли",
+  workspace: "Workspace",
+  docs: "Docs",
+  sheets: "Sheets",
+  slides: "Slides",
+  folders: "Папки",
+  pdf: "PDF",
+  images: "Зображення"
+};
+
+function gwsDriveEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function gwsDriveFormatDate(value) {
+  if (!value) return "Дата невідома";
+
+  try {
+    return new Date(value).toLocaleString("uk-UA", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (e) {
+    return value;
+  }
+}
+
+function gwsDriveIconByMime(mimeType) {
+  if (mimeType === "application/vnd.google-apps.folder") return "📁";
+  if (mimeType === "application/vnd.google-apps.document") return "📄";
+  if (mimeType === "application/vnd.google-apps.spreadsheet") return "📊";
+  if (mimeType === "application/vnd.google-apps.presentation") return "🎞️";
+  if (mimeType === "application/pdf") return "📕";
+  if ((mimeType || "").startsWith("image/")) return "🖼️";
+  return "📦";
+}
+
+function gwsDriveTypeLabel(mimeType) {
+  if (mimeType === "application/vnd.google-apps.folder") return "Папка";
+  if (mimeType === "application/vnd.google-apps.document") return "Google Docs";
+  if (mimeType === "application/vnd.google-apps.spreadsheet") return "Google Sheets";
+  if (mimeType === "application/vnd.google-apps.presentation") return "Google Slides";
+  if (mimeType === "application/pdf") return "PDF";
+  if ((mimeType || "").startsWith("image/")) return "Зображення";
+  return "Файл";
+}
+
+function renderGwsDriveBase() {
+  if (!gwsDrivePanel) return;
+
+  gwsDrivePanel.innerHTML = `
+    <div class="gws-panel__head">
+      <div>
+        <h3>Google Drive</h3>
+        <p>Файли з Google Drive: документи, таблиці, презентації, папки, PDF та зображення.</p>
+      </div>
+
+      <div class="gws-actions-row">
+        <button id="gwsRefreshDriveBtn" class="btn btn-primary" type="button">
+          🔄 Оновити Drive
+        </button>
+      </div>
+    </div>
+
+    <div class="gws-drive-create-row">
+      <button id="gwsDriveCreateDocBtn" class="gws-drive-create-btn" type="button">📄 Новий Doc</button>
+      <button id="gwsDriveCreateSheetBtn" class="gws-drive-create-btn" type="button">📊 Нова таблиця</button>
+      <button id="gwsDriveCreateSlidesBtn" class="gws-drive-create-btn" type="button">🎞️ Нова презентація</button>
+    </div>
+
+    <div class="gws-drive-toolbar">
+      <div class="gws-drive-filters">
+        <button class="gws-drive-filter active" data-drive-type="all">🌍 Усі</button>
+        <button class="gws-drive-filter" data-drive-type="workspace">✨ Workspace</button>
+        <button class="gws-drive-filter" data-drive-type="docs">📄 Docs</button>
+        <button class="gws-drive-filter" data-drive-type="sheets">📊 Sheets</button>
+        <button class="gws-drive-filter" data-drive-type="slides">🎞️ Slides</button>
+        <button class="gws-drive-filter" data-drive-type="folders">📁 Папки</button>
+        <button class="gws-drive-filter" data-drive-type="pdf">📕 PDF</button>
+        <button class="gws-drive-filter" data-drive-type="images">🖼️ Зображення</button>
+      </div>
+
+      <div class="gws-drive-search-row">
+        <input id="gwsDriveSearchInput" class="gws-drive-search" type="text" placeholder="Пошук файлів у Google Drive...">
+        <button id="gwsDriveSearchBtn" class="btn btn-primary" type="button">🔍 Знайти</button>
+      </div>
+    </div>
+
+    <div id="gwsDriveStatus" class="gws-status-line">
+      Натисніть “Оновити Drive”, щоб підтягнути файли.
+    </div>
+
+    <div id="gwsDriveList" class="gws-files-grid"></div>
+  `;
+
+  document.getElementById("gwsRefreshDriveBtn")?.addEventListener("click", () => {
+    loadGoogleDriveToHub();
+  });
+
+  document.getElementById("gwsDriveSearchBtn")?.addEventListener("click", () => {
+    loadGoogleDriveToHub();
+  });
+
+  document.getElementById("gwsDriveSearchInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      loadGoogleDriveToHub();
+    }
+  });
+
+  document.querySelectorAll(".gws-drive-filter").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".gws-drive-filter").forEach((item) => {
+        item.classList.remove("active");
+      });
+
+      btn.classList.add("active");
+      gwsCurrentDriveType = btn.dataset.driveType || "all";
+      loadGoogleDriveToHub();
+    });
+  });
+
+  document.getElementById("gwsDriveCreateDocBtn")?.addEventListener("click", createGoogleDocFromDriveHub);
+  document.getElementById("gwsDriveCreateSheetBtn")?.addEventListener("click", createGoogleSheetFromDriveHub);
+  document.getElementById("gwsDriveCreateSlidesBtn")?.addEventListener("click", createGoogleSlidesFromDriveHub);
+}
+
+async function loadGoogleDriveToHub() {
+  const statusBox = document.getElementById("gwsDriveStatus");
+  const listBox = document.getElementById("gwsDriveList");
+  const searchValue = document.getElementById("gwsDriveSearchInput")?.value.trim() || "";
+
+  if (!statusBox || !listBox) return;
+
+  statusBox.textContent = "Завантажуємо файли з Google Drive...";
+  listBox.innerHTML = "";
+
+  try {
+    const url = `${GOOGLE_BACKEND_URL}/api/google/drive/files?type=${encodeURIComponent(gwsCurrentDriveType)}&page_size=80&search=${encodeURIComponent(searchValue)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.success) {
+      statusBox.textContent = data.error || "Не вдалося отримати Google Drive.";
+      return;
+    }
+
+    const files = data.files || [];
+    const label = gwsDriveFilters[gwsCurrentDriveType] || "Файли";
+
+    if (!files.length) {
+      statusBox.textContent = `У розділі “${label}” файлів не знайдено.`;
+      return;
+    }
+
+    statusBox.textContent = `Знайдено файлів: ${files.length}`;
+
+    listBox.innerHTML = files.map(file => {
+      const icon = gwsDriveIconByMime(file.mimeType);
+      const typeLabel = gwsDriveTypeLabel(file.mimeType);
+
+      return `
+        <article class="gws-file-card">
+          <div class="gws-file-card__top">
+            <div class="gws-file-card__icon">${icon}</div>
+            <div>
+              <h4>${gwsDriveEscape(file.name)}</h4>
+              <p>${gwsDriveEscape(typeLabel)}</p>
+              <p>Оновлено: ${gwsDriveEscape(gwsDriveFormatDate(file.modifiedTime))}</p>
+            </div>
+          </div>
+
+          <div class="gws-file-card__actions">
+            ${
+              file.webViewLink
+                ? `<a class="gws-file-link" href="${gwsDriveEscape(file.webViewLink)}" target="_blank" rel="noopener">Відкрити</a>`
+                : `<button class="gws-file-link" type="button" disabled>Недоступно</button>`
+            }
+          </div>
+        </article>
+      `;
+    }).join("");
+
+  } catch (error) {
+    console.error("Drive load error:", error);
+    statusBox.textContent = "Помилка завантаження Drive. Перевірте Railway backend.";
+  }
+}
+
+async function createGoogleDocFromDriveHub() {
+  const title = prompt("Назва нового Google Docs документа:", "ItEnAi CRM — Документ");
+  if (!title) return;
+
+  const text = prompt("Початковий текст документа, можна залишити порожнім:", "");
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/docs/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        text: text || ""
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Не вдалося створити документ.");
+      return;
+    }
+
+    if (data.documentUrl) {
+      window.open(data.documentUrl, "_blank", "noopener");
+    }
+
+    await loadGoogleDriveToHub();
+
+  } catch (error) {
+    console.error("Drive create doc error:", error);
+    alert("Помилка створення Google Docs документа.");
+  }
+}
+
+async function createGoogleSheetFromDriveHub() {
+  const title = prompt("Назва нової Google Sheets таблиці:", "ItEnAi CRM — Ліди");
+  if (!title) return;
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/sheets/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Не вдалося створити таблицю.");
+      return;
+    }
+
+    if (data.spreadsheetUrl) {
+      window.open(data.spreadsheetUrl, "_blank", "noopener");
+    }
+
+    await loadGoogleDriveToHub();
+
+  } catch (error) {
+    console.error("Drive create sheet error:", error);
+    alert("Помилка створення Google Sheets таблиці.");
+  }
+}
+
+async function createGoogleSlidesFromDriveHub() {
+  const title = prompt("Назва нової Google Slides презентації:", "ItEnAi CRM — Презентація");
+  if (!title) return;
+
+  try {
+    const res = await fetch(`${GOOGLE_BACKEND_URL}/api/google/slides/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title
+      })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Не вдалося створити презентацію.");
+      return;
+    }
+
+    if (data.presentationUrl) {
+      window.open(data.presentationUrl, "_blank", "noopener");
+    }
+
+    await loadGoogleDriveToHub();
+
+  } catch (error) {
+    console.error("Drive create slides error:", error);
+    alert("Помилка створення Google Slides презентації.");
+  }
+}
+
+if (gwsDrivePanel) {
+  renderGwsDriveBase();
+}
+
+gwsDriveTab?.addEventListener("click", () => {
+  setTimeout(() => {
+    renderGwsDriveBase();
+    loadGoogleDriveToHub();
+  }, 100);
+});
+
 })();
