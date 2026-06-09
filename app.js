@@ -6080,4 +6080,290 @@ gwsDriveTab?.addEventListener("click", () => {
   }, 100);
 });
 
+/* ===== META HUB ===== */
+
+const META_BACKEND_URL = GOOGLE_BACKEND_URL;
+
+const metaIntegrationCard = document.getElementById("metaIntegrationCard");
+const metaStatusBadge = document.getElementById("metaStatusBadge");
+const metaConnectedInfo = document.getElementById("metaConnectedInfo");
+
+const connectMetaBtn = document.getElementById("connectMetaBtn");
+const openMetaHubBtn = document.getElementById("openMetaHubBtn");
+const disconnectMetaBtn = document.getElementById("disconnectMetaBtn");
+
+const metaHub = document.getElementById("metaHub");
+const closeMetaHubBtn = document.getElementById("closeMetaHubBtn");
+const metaNeedLogin = document.getElementById("metaNeedLogin");
+const metaHubApp = document.getElementById("metaHubApp");
+const metaHubStatusText = document.getElementById("metaHubStatusText");
+const metaLoginBtn = document.getElementById("metaLoginBtn");
+
+const metaTabs = document.querySelectorAll("[data-meta-tab]");
+const metaPanels = document.querySelectorAll("[data-meta-panel]");
+
+const metaRefreshPagesBtn = document.getElementById("metaRefreshPagesBtn");
+const metaPagesStatus = document.getElementById("metaPagesStatus");
+const metaPagesList = document.getElementById("metaPagesList");
+const metaSettingsBox = document.getElementById("metaSettingsBox");
+
+async function getMetaStatus() {
+  try {
+    const res = await fetch(`${META_BACKEND_URL}/api/meta/status?t=${Date.now()}`);
+    return await res.json();
+  } catch (err) {
+    console.error("Meta status error:", err);
+    return {
+      configured: false,
+      connected: false,
+      error: true
+    };
+  }
+}
+
+async function refreshMetaStatus() {
+  if (!metaStatusBadge) return;
+
+  const status = await getMetaStatus();
+
+  if (status.error) {
+    metaStatusBadge.textContent = "Помилка";
+    metaStatusBadge.className = "integration-status is-soon";
+    if (metaConnectedInfo) {
+      metaConnectedInfo.textContent = "CRM не може отримати статус Meta з Railway.";
+    }
+    return;
+  }
+
+  if (!status.configured) {
+    metaStatusBadge.textContent = "Не налаштовано";
+    metaStatusBadge.className = "integration-status is-soon";
+    if (metaConnectedInfo) {
+      metaConnectedInfo.textContent = "Meta variables не налаштовані в Railway.";
+    }
+
+    connectMetaBtn?.classList.remove("is-hidden");
+    openMetaHubBtn?.classList.add("is-hidden");
+    disconnectMetaBtn?.classList.add("is-hidden");
+    return;
+  }
+
+  if (!status.connected) {
+    metaStatusBadge.textContent = "Не підключено";
+    metaStatusBadge.className = "integration-status is-dev";
+    if (metaConnectedInfo) {
+      metaConnectedInfo.textContent = "Натисніть кнопку нижче, щоб підключити Meta акаунт.";
+    }
+
+    connectMetaBtn?.classList.remove("is-hidden");
+    openMetaHubBtn?.classList.remove("is-hidden");
+    disconnectMetaBtn?.classList.add("is-hidden");
+    return;
+  }
+
+  metaStatusBadge.textContent = "Підключено";
+  metaStatusBadge.className = "integration-status";
+  if (metaConnectedInfo) {
+    const who = status.name || status.email || status.facebook_user_id || "Meta акаунт";
+    metaConnectedInfo.textContent = `Підключено: ${who}`;
+  }
+
+  connectMetaBtn?.classList.add("is-hidden");
+  openMetaHubBtn?.classList.remove("is-hidden");
+  disconnectMetaBtn?.classList.remove("is-hidden");
+}
+
+function openMetaHubUI() {
+  if (!metaHub) return;
+
+  metaHub.classList.add("is-open");
+  metaHub.setAttribute("aria-hidden", "false");
+  document.body.classList.add("gws-lock");
+}
+
+function closeMetaHubUI() {
+  if (!metaHub) return;
+
+  metaHub.classList.remove("is-open");
+  metaHub.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("gws-lock");
+}
+
+function showMetaHubLoginState(message) {
+  if (metaHubStatusText) {
+    metaHubStatusText.textContent = message || "Потрібно увійти в Meta акаунт.";
+  }
+
+  metaNeedLogin?.classList.add("is-visible");
+  metaHubApp?.classList.remove("is-visible");
+}
+
+function showMetaHubAppState(status) {
+  if (metaHubStatusText) {
+    const who = status?.name || status?.email || status?.facebook_user_id || "Meta акаунт";
+    metaHubStatusText.textContent = `Підключено: ${who}`;
+  }
+
+  metaNeedLogin?.classList.remove("is-visible");
+  metaHubApp?.classList.add("is-visible");
+
+  if (metaSettingsBox) {
+    metaSettingsBox.innerHTML = `
+      <b>Meta акаунт підключено.</b><br>
+      Імʼя: ${escapeHtml(status?.name || "—")}<br>
+      Email: ${escapeHtml(status?.email || "—")}<br>
+      Facebook User ID: ${escapeHtml(status?.facebook_user_id || "—")}
+    `;
+  }
+}
+
+async function openMetaHub() {
+  openMetaHubUI();
+
+  showMetaHubLoginState("Перевіряємо Meta акаунт...");
+
+  const status = await getMetaStatus();
+
+  if (status.error) {
+    showMetaHubLoginState("CRM не може отримати статус Meta з Railway.");
+    return;
+  }
+
+  if (!status.configured) {
+    showMetaHubLoginState("Meta OAuth ще не налаштований у Railway.");
+    return;
+  }
+
+  if (!status.connected) {
+    showMetaHubLoginState("Потрібно увійти в Meta акаунт.");
+    return;
+  }
+
+  showMetaHubAppState(status);
+  setMetaHubTab("pages");
+  loadMetaPages();
+}
+
+function setMetaHubTab(tabName) {
+  metaTabs.forEach(tab => {
+    tab.classList.toggle("is-active", tab.dataset.metaTab === tabName);
+  });
+
+  metaPanels.forEach(panel => {
+    panel.classList.toggle("is-active", panel.dataset.metaPanel === tabName);
+  });
+
+  if (tabName === "pages") {
+    loadMetaPages();
+  }
+}
+
+async function loadMetaPages() {
+  if (!metaPagesStatus || !metaPagesList) return;
+
+  metaPagesStatus.textContent = "Завантажуємо Facebook Pages...";
+  metaPagesList.innerHTML = "";
+
+  try {
+    const res = await fetch(`${META_BACKEND_URL}/api/meta/pages?t=${Date.now()}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      metaPagesStatus.textContent = data.error || "Не вдалося отримати Facebook Pages.";
+      return;
+    }
+
+    const pages = data.pages || [];
+
+    if (!pages.length) {
+      metaPagesStatus.textContent = "Сторінок не знайдено. Перевірте, чи цей Facebook акаунт має доступ до бізнес-сторінок.";
+      return;
+    }
+
+    metaPagesStatus.textContent = `Знайдено сторінок: ${pages.length}`;
+
+    metaPagesList.innerHTML = pages.map(page => {
+      const tasks = Array.isArray(page.tasks) ? page.tasks.join(", ") : "";
+
+      return `
+        <div class="gws-file-card meta-page-card">
+          <div class="gws-file-card__top">
+            <div class="gws-file-card__icon">📘</div>
+            <div>
+              <h4>${escapeHtml(page.name || "Facebook Page")}</h4>
+              <p>${escapeHtml(page.category || "Сторінка")}</p>
+              <p>${escapeHtml(tasks || "Доступи Meta")}</p>
+            </div>
+          </div>
+
+          <div class="gws-file-card__actions">
+            <button class="gws-file-link" type="button" disabled>
+              ✅ Доступ отримано
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch (err) {
+    console.error("Meta pages error:", err);
+    metaPagesStatus.textContent = "Помилка завантаження Facebook Pages.";
+  }
+}
+
+connectMetaBtn?.addEventListener("click", () => {
+  window.location.href = `${META_BACKEND_URL}/api/meta/login`;
+});
+
+metaLoginBtn?.addEventListener("click", () => {
+  window.location.href = `${META_BACKEND_URL}/api/meta/login`;
+});
+
+disconnectMetaBtn?.addEventListener("click", async () => {
+  if (!confirm("Відключити Meta акаунт від CRM?")) return;
+
+  await fetch(`${META_BACKEND_URL}/api/meta/disconnect`, {
+    method: "POST"
+  });
+
+  await refreshMetaStatus();
+});
+
+openMetaHubBtn?.addEventListener("click", openMetaHub);
+closeMetaHubBtn?.addEventListener("click", closeMetaHubUI);
+
+metaHub?.addEventListener("click", (e) => {
+  if (e.target?.dataset?.metaClose === "1") {
+    closeMetaHubUI();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && metaHub?.classList.contains("is-open")) {
+    closeMetaHubUI();
+  }
+});
+
+metaTabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    setMetaHubTab(tab.dataset.metaTab);
+  });
+});
+
+metaRefreshPagesBtn?.addEventListener("click", loadMetaPages);
+
+setTimeout(() => {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("open") === "metahub" || params.get("meta") === "connected") {
+    openMetaHub();
+
+    params.delete("open");
+    params.delete("meta");
+    const cleanUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
+    window.history.replaceState({}, "", cleanUrl);
+  }
+}, 400);
+
+refreshMetaStatus();
+
 })();

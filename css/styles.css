@@ -3776,3 +3776,37 @@ body.gws-lock .gws-hub *{
     grid-template-columns:1fr;
   }
 }
+
+/* ===== META HUB ===== */
+
+.integration-card--meta {
+  border-color: rgba(24, 119, 242, .28);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(24,119,242,.14), transparent 34%),
+    radial-gradient(circle at 10% 100%, rgba(139,92,246,.10), transparent 32%),
+    #fff;
+}
+
+.meta-hub .gws-hub__shell {
+  background:
+    radial-gradient(circle at 100% 100%, rgba(24,119,242,.13), transparent 36%),
+    radial-gradient(circle at 0% 100%, rgba(139,92,246,.10), transparent 30%),
+    #f8fbff;
+}
+
+.meta-hub .gws-hub__kicker {
+  color: #1877f2;
+}
+
+.meta-hub .gws-tab.is-active {
+  border-color: rgba(24,119,242,.35);
+  background: linear-gradient(135deg, rgba(24,119,242,.10), rgba(59,130,246,.04));
+}
+
+.meta-page-card {
+  border-color: rgba(24,119,242,.16);
+}
+
+.is-hidden {
+  display: none !important;
+}

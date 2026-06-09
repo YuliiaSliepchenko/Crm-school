@@ -602,15 +602,39 @@
         <button class="btn btn-ghost">Підключити</button>
       </div>
 
-      <div class="integration-card">
-        <div class="integration-icon">📘</div>
-        <div>
-          <h3>Facebook / Meta</h3>
-          <p>Ліди з реклами, Meta Lead Ads, Instagram Direct.</p>
-        </div>
-        <span class="integration-status is-soon">OAuth</span>
-        <button class="btn btn-ghost">Підключити</button>
-      </div>
+      <div class="integration-card integration-card--meta" id="metaIntegrationCard">
+  <div class="integration-icon">📘</div>
+
+  <div>
+    <h3>Facebook / Meta</h3>
+    <p>Facebook Pages, Lead Ads, Instagram Direct та майбутня Meta-автоматизація CRM.</p>
+  </div>
+
+  <span id="metaStatusBadge" class="integration-status is-dev">Перевірка...</span>
+
+  <div id="metaConnectedInfo" class="integration-connected-info">
+    —
+  </div>
+
+  <div class="integration-services">
+    <span>📘 Pages</span>
+    <span>🎯 Lead Ads</span>
+    <span>📸 Instagram</span>
+    <span>💬 Direct</span>
+  </div>
+
+  <button id="connectMetaBtn" class="btn btn-primary" type="button">
+    🔐 Підключити Meta
+  </button>
+
+  <button id="openMetaHubBtn" class="btn btn-ghost meta-hub-open-btn" type="button">
+    🚀 Відкрити Meta Hub
+  </button>
+
+  <button id="disconnectMetaBtn" class="btn btn-ghost integration-danger-btn" type="button">
+    🚪 Вийти з Meta акаунту
+  </button>
+</div>
 
       <div class="integration-card">
         <div class="integration-icon">📸</div>
@@ -874,6 +898,159 @@
       <button class="btn btn-primary" id="saveTeacherBtn">💾 Зберегти</button>
     </div>
   </div>
+</div>
+
+<!-- ===== META HUB MODAL ===== -->
+<div id="metaHub" class="gws-hub meta-hub" aria-hidden="true">
+  <div class="gws-hub__backdrop" data-meta-close="1"></div>
+
+  <section class="gws-hub__shell meta-hub__shell">
+    <header class="gws-hub__top meta-hub__top">
+      <div>
+        <div class="gws-hub__kicker">META BUSINESS</div>
+        <h2>Meta Hub</h2>
+        <p id="metaHubStatusText">Перевіряємо підключення Meta акаунту...</p>
+      </div>
+
+      <button id="closeMetaHubBtn" class="gws-hub__close" type="button">
+        ✕ Закрити
+      </button>
+    </header>
+
+    <div id="metaNeedLogin" class="gws-login-box">
+      <div class="gws-login-box__icon">🔐</div>
+      <h3>Потрібно увійти в Meta акаунт</h3>
+      <p>
+        Щоб бачити Facebook Pages, заявки з реклами, Instagram та Direct,
+        спочатку підключіть Meta акаунт до CRM.
+      </p>
+
+      <button id="metaLoginBtn" class="btn btn-primary" type="button">
+        🔐 Увійти через Meta / Facebook
+      </button>
+    </div>
+
+    <div id="metaHubApp" class="gws-layout">
+      <aside class="gws-sidebar">
+        <div class="gws-sidebar__title">Функції</div>
+
+        <button class="gws-tab is-active" type="button" data-meta-tab="pages">
+          <span>📘</span>
+          <div>
+            <b>Facebook Pages</b>
+            <small>Сторінки бізнесу</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-meta-tab="leads">
+          <span>🎯</span>
+          <div>
+            <b>Lead Ads</b>
+            <small>Заявки з реклами</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-meta-tab="instagram">
+          <span>📸</span>
+          <div>
+            <b>Instagram</b>
+            <small>Профіль і контент</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-meta-tab="direct">
+          <span>💬</span>
+          <div>
+            <b>Direct</b>
+            <small>Повідомлення</small>
+          </div>
+        </button>
+
+        <button class="gws-tab" type="button" data-meta-tab="settings">
+          <span>⚙️</span>
+          <div>
+            <b>Налаштування</b>
+            <small>Статус і доступи</small>
+          </div>
+        </button>
+      </aside>
+
+      <main class="gws-content">
+        <section class="gws-panel is-active" data-meta-panel="pages">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Facebook Pages</h3>
+              <p>Список сторінок, доступних через підключений Meta акаунт.</p>
+            </div>
+
+            <div class="gws-actions-row">
+              <button id="metaRefreshPagesBtn" class="btn btn-primary" type="button">
+                🔄 Оновити сторінки
+              </button>
+            </div>
+          </div>
+
+          <div id="metaPagesStatus" class="gws-status-line">
+            Натисніть “Оновити сторінки”, щоб підтягнути Facebook Pages.
+          </div>
+
+          <div id="metaPagesList" class="gws-files-grid"></div>
+        </section>
+
+        <section class="gws-panel" data-meta-panel="leads">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Meta Lead Ads</h3>
+              <p>Тут будуть заявки з Facebook / Instagram реклами після підключення Webhooks.</p>
+            </div>
+          </div>
+
+          <div class="gws-status-line">
+            Наступний етап: підключимо Lead Ads webhook і автоматичне створення лідів у CRM.
+          </div>
+        </section>
+
+        <section class="gws-panel" data-meta-panel="instagram">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Instagram</h3>
+              <p>Тут буде Instagram Business акаунт, профіль, коментарі та майбутні інтеграції.</p>
+            </div>
+          </div>
+
+          <div class="gws-status-line">
+            Instagram підключимо після Facebook Pages, бо він прив’язаний до сторінки Meta.
+          </div>
+        </section>
+
+        <section class="gws-panel" data-meta-panel="direct">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Instagram Direct / Messenger</h3>
+              <p>Тут будуть повідомлення клієнтів після отримання потрібних permissions.</p>
+            </div>
+          </div>
+
+          <div class="gws-status-line">
+            Direct потребує окремих дозволів Meta. Спочатку перевіряємо Pages і Lead Ads.
+          </div>
+        </section>
+
+        <section class="gws-panel" data-meta-panel="settings">
+          <div class="gws-panel__head">
+            <div>
+              <h3>Meta Settings</h3>
+              <p>Стан підключення Meta акаунту до CRM.</p>
+            </div>
+          </div>
+
+          <div id="metaSettingsBox" class="gws-status-line">
+            Перевіряємо Meta статус...
+          </div>
+        </section>
+      </main>
+    </div>
+  </section>
 </div>
 
 <!-- ===== GOOGLE WORKSPACE HUB MODAL ===== -->
