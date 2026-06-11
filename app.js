@@ -7224,6 +7224,57 @@ function metaInstagramCommentReplies(comment) {
   return [];
 }
 
+async function metaInstagramCommentAction(
+  endpoint,
+  method,
+  payload
+) {
+  const response = await fetch(
+    `${META_BACKEND_URL}${endpoint}`,
+    {
+      method,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+
+  const responseText = await response.text();
+
+  let data = {};
+
+  try {
+    data = responseText
+      ? JSON.parse(responseText)
+      : {};
+  } catch (error) {
+    throw new Error(
+      "Railway повернув некоректну відповідь."
+    );
+  }
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.error ||
+      "Не вдалося виконати дію з коментарем."
+    );
+  }
+
+  return data;
+}
+
+
+async function reloadMetaInstagramComments() {
+  if (!metaInstagramSelectedMediaId) {
+    return;
+  }
+
+  await loadMetaInstagramDetails(
+    metaInstagramSelectedMediaId
+  );
+}
+
 function renderMetaInstagramComments(commentsData) {
   if (!commentsData?.success) {
     return `
@@ -7236,7 +7287,9 @@ function renderMetaInstagramComments(commentsData) {
     `;
   }
 
-  const comments = Array.isArray(commentsData.comments)
+  const comments = Array.isArray(
+    commentsData.comments
+  )
     ? commentsData.comments
     : [];
 
@@ -7252,6 +7305,14 @@ function renderMetaInstagramComments(commentsData) {
     .map(comment => {
       const replies =
         metaInstagramCommentReplies(comment);
+
+      const commentId = String(
+        comment.id || ""
+      );
+
+      const username = String(
+        comment.username || "instagram"
+      );
 
       const repliesHtml = replies.length
         ? `
@@ -7285,13 +7346,88 @@ function renderMetaInstagramComments(commentsData) {
         `
         : "";
 
+      const controlsHtml = commentId
+        ? `
+          <div class="meta-ig-comment-actions">
+            <button
+              class="meta-ig-comment-action is-reply"
+              type="button"
+              data-ig-comment-action="reply-open"
+              data-comment-id="${escapeAttr(commentId)}"
+            >
+              ↩ Відповісти
+            </button>
+
+            <button
+              class="meta-ig-comment-action is-visibility"
+              type="button"
+              data-ig-comment-action="visibility"
+              data-comment-id="${escapeAttr(commentId)}"
+              data-comment-hidden="${
+                comment.hidden ? "true" : "false"
+              }"
+            >
+              ${
+                comment.hidden
+                  ? "👁 Показати"
+                  : "🙈 Приховати"
+              }
+            </button>
+
+            <button
+              class="meta-ig-comment-action is-delete"
+              type="button"
+              data-ig-comment-action="delete"
+              data-comment-id="${escapeAttr(commentId)}"
+              data-comment-username="${escapeAttr(username)}"
+            >
+              🗑 Видалити
+            </button>
+          </div>
+
+          <div
+            class="meta-ig-reply-form"
+            data-ig-reply-form
+            hidden
+          >
+            <textarea
+              data-ig-reply-input
+              rows="3"
+              maxlength="1000"
+              placeholder="Напишіть відповідь від @itenai.school..."
+            ></textarea>
+
+            <div class="meta-ig-reply-form__actions">
+              <button
+                class="meta-ig-comment-action is-cancel"
+                type="button"
+                data-ig-comment-action="reply-cancel"
+                data-comment-id="${escapeAttr(commentId)}"
+              >
+                Скасувати
+              </button>
+
+              <button
+                class="meta-ig-comment-action is-send"
+                type="button"
+                data-ig-comment-action="reply-send"
+                data-comment-id="${escapeAttr(commentId)}"
+              >
+                Надіслати відповідь
+              </button>
+            </div>
+          </div>
+        `
+        : "";
+
       return `
-        <article class="meta-ig-comment">
+        <article
+          class="meta-ig-comment"
+          data-instagram-comment-id="${escapeAttr(commentId)}"
+        >
           <div class="meta-ig-comment__top">
             <strong>
-              @${escapeHtml(
-                comment.username || "instagram"
-              )}
+              @${escapeHtml(username)}
             </strong>
 
             <span>
@@ -7324,6 +7460,8 @@ function renderMetaInstagramComments(commentsData) {
                 : ""
             }
           </div>
+
+          ${controlsHtml}
 
           ${repliesHtml}
         </article>
@@ -7933,6 +8071,237 @@ metaInstagramMediaList?.addEventListener(
       mediaButton.dataset.metaInstagramMediaId;
 
     loadMetaInstagramDetails(mediaId);
+  }
+);
+
+metaInstagramDetails?.addEventListener(
+  "click",
+  async event => {
+    const actionButton = event.target.closest(
+      "[data-ig-comment-action]"
+    );
+
+    if (!actionButton) {
+      return;
+    }
+
+    const action =
+      actionButton.dataset.igCommentAction;
+
+    const commentId =
+      actionButton.dataset.commentId || "";
+
+    const commentCard = actionButton.closest(
+      ".meta-ig-comment"
+    );
+
+    if (!commentCard || !commentId) {
+      return;
+    }
+
+    const account =
+      metaInstagramCurrentAccount();
+
+    if (!account?.id) {
+      alert(
+        "Instagram-акаунт не вибрано."
+      );
+      return;
+    }
+
+    const replyForm =
+      commentCard.querySelector(
+        "[data-ig-reply-form]"
+      );
+
+    const replyInput =
+      commentCard.querySelector(
+        "[data-ig-reply-input]"
+      );
+
+    /* Відкрити поле відповіді */
+    if (action === "reply-open") {
+      if (replyForm) {
+        replyForm.hidden = false;
+      }
+
+      replyInput?.focus();
+      return;
+    }
+
+    /* Закрити поле відповіді */
+    if (action === "reply-cancel") {
+      if (replyForm) {
+        replyForm.hidden = true;
+      }
+
+      if (replyInput) {
+        replyInput.value = "";
+      }
+
+      return;
+    }
+
+    /* Надіслати відповідь */
+    if (action === "reply-send") {
+      const message =
+        replyInput?.value.trim() || "";
+
+      if (!message) {
+        alert(
+          "Напишіть текст відповіді."
+        );
+        replyInput?.focus();
+        return;
+      }
+
+      const oldText =
+        actionButton.textContent;
+
+      actionButton.disabled = true;
+      actionButton.textContent =
+        "Надсилаємо...";
+
+      try {
+        await metaInstagramCommentAction(
+          "/api/meta/instagram/comments/reply",
+          "POST",
+          {
+            instagram_id: String(account.id),
+            comment_id: commentId,
+            message
+          }
+        );
+
+        metaInstagramStatus.textContent =
+          "Відповідь успішно опублікована.";
+
+        await reloadMetaInstagramComments();
+
+      } catch (error) {
+        console.error(
+          "Instagram reply error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Не вдалося надіслати відповідь."
+        );
+
+        actionButton.disabled = false;
+        actionButton.textContent = oldText;
+      }
+
+      return;
+    }
+
+    /* Приховати або показати */
+    if (action === "visibility") {
+      const currentlyHidden =
+        actionButton.dataset.commentHidden ===
+        "true";
+
+      const newHiddenValue =
+        !currentlyHidden;
+
+      const oldText =
+        actionButton.textContent;
+
+      actionButton.disabled = true;
+      actionButton.textContent =
+        newHiddenValue
+          ? "Приховуємо..."
+          : "Показуємо...";
+
+      try {
+        await metaInstagramCommentAction(
+          "/api/meta/instagram/comments/visibility",
+          "POST",
+          {
+            instagram_id: String(account.id),
+            comment_id: commentId,
+            hide: newHiddenValue
+          }
+        );
+
+        metaInstagramStatus.textContent =
+          newHiddenValue
+            ? "Коментар приховано."
+            : "Коментар знову показується.";
+
+        await reloadMetaInstagramComments();
+
+      } catch (error) {
+        console.error(
+          "Instagram visibility error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Не вдалося змінити видимість коментаря."
+        );
+
+        actionButton.disabled = false;
+        actionButton.textContent = oldText;
+      }
+
+      return;
+    }
+
+    /* Видалити */
+    if (action === "delete") {
+      const username =
+        actionButton.dataset.commentUsername ||
+        "користувача";
+
+      const confirmed = confirm(
+        `Видалити коментар від @${username}?\n\n` +
+        "Цю дію неможливо скасувати."
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const oldText =
+        actionButton.textContent;
+
+      actionButton.disabled = true;
+      actionButton.textContent =
+        "Видаляємо...";
+
+      try {
+        await metaInstagramCommentAction(
+          "/api/meta/instagram/comments",
+          "DELETE",
+          {
+            instagram_id: String(account.id),
+            comment_id: commentId
+          }
+        );
+
+        metaInstagramStatus.textContent =
+          "Коментар видалено.";
+
+        await reloadMetaInstagramComments();
+
+      } catch (error) {
+        console.error(
+          "Instagram delete error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Не вдалося видалити коментар."
+        );
+
+        actionButton.disabled = false;
+        actionButton.textContent = oldText;
+      }
+    }
   }
 );
 

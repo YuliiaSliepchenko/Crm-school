@@ -4708,3 +4708,131 @@ body.gws-lock .gws-hub *{
     flex-direction:column;
   }
 }
+
+/* ===== INSTAGRAM COMMENT MANAGEMENT ===== */
+
+.meta-ig-comment-actions{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:11px;
+  padding-top:10px;
+  border-top:1px solid #f1f5f9;
+}
+
+.meta-ig-comment-action{
+  min-height:32px;
+  padding:6px 10px;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  background:#fff;
+  color:#475569;
+  font-family:inherit;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+  transition:
+    transform .15s ease,
+    border-color .15s ease,
+    background .15s ease;
+}
+
+.meta-ig-comment-action:hover{
+  transform:translateY(-1px);
+}
+
+.meta-ig-comment-action:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  transform:none;
+}
+
+.meta-ig-comment-action.is-reply{
+  border-color:#bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+}
+
+.meta-ig-comment-action.is-visibility{
+  border-color:#fde68a;
+  background:#fffbeb;
+  color:#a16207;
+}
+
+.meta-ig-comment-action.is-delete{
+  border-color:#fecaca;
+  background:#fef2f2;
+  color:#b91c1c;
+}
+
+.meta-ig-comment-action.is-cancel{
+  background:#f8fafc;
+  color:#64748b;
+}
+
+.meta-ig-comment-action.is-send{
+  margin-left:auto;
+  border-color:#86efac;
+  background:#22c55e;
+  color:#fff;
+}
+
+.meta-ig-reply-form{
+  margin-top:10px;
+  padding:11px;
+  border:1px solid #dbeafe;
+  border-radius:13px;
+  background:#f8fbff;
+}
+
+.meta-ig-reply-form[hidden]{
+  display:none;
+}
+
+.meta-ig-reply-form textarea{
+  width:100%;
+  min-height:78px;
+  padding:10px 11px;
+  resize:vertical;
+  border:1px solid #cbd5e1;
+  border-radius:11px;
+  outline:none;
+  background:#fff;
+  color:#172033;
+  font-family:inherit;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.meta-ig-reply-form textarea:focus{
+  border-color:#60a5fa;
+  box-shadow:0 0 0 3px rgba(59,130,246,.10);
+}
+
+.meta-ig-reply-form__actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:8px;
+}
+
+@media (max-width:600px){
+  .meta-ig-comment-actions{
+    align-items:stretch;
+  }
+
+  .meta-ig-comment-action{
+    flex:1;
+  }
+
+  .meta-ig-reply-form__actions{
+    flex-direction:column-reverse;
+  }
+
+  .meta-ig-reply-form__actions
+  .meta-ig-comment-action{
+    width:100%;
+    margin-left:0;
+  }
+}
