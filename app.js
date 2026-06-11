@@ -6105,7 +6105,53 @@ const metaPanels = document.querySelectorAll("[data-meta-panel]");
 const metaRefreshPagesBtn = document.getElementById("metaRefreshPagesBtn");
 const metaPagesStatus = document.getElementById("metaPagesStatus");
 const metaPagesList = document.getElementById("metaPagesList");
-const metaSettingsBox = document.getElementById("metaSettingsBox");
+
+const metaRefreshAdsBtn = document.getElementById("metaRefreshAdsBtn");
+const metaAdAccountSelect = document.getElementById("metaAdAccountSelect");
+const metaAdsPeriodSelect = document.getElementById("metaAdsPeriodSelect");
+const metaAdsStatus = document.getElementById("metaAdsStatus");
+const metaCampaignsList = document.getElementById("metaCampaignsList");
+const metaCampaignDetails =
+  document.getElementById("metaCampaignDetails");
+
+/* Instagram Hub */
+const metaRefreshInstagramBtn =
+  document.getElementById("metaRefreshInstagramBtn");
+
+const metaInstagramStatus =
+  document.getElementById("metaInstagramStatus");
+
+const metaInstagramAccountSelect =
+  document.getElementById("metaInstagramAccountSelect");
+
+const metaInstagramProfile =
+  document.getElementById("metaInstagramProfile");
+
+const metaInstagramMediaList =
+  document.getElementById("metaInstagramMediaList");
+
+const metaInstagramDetails =
+  document.getElementById("metaInstagramDetails");
+
+const metaInstagramLoadMoreBtn =
+  document.getElementById("metaInstagramLoadMoreBtn");
+
+const metaSettingsBox =
+  document.getElementById("metaSettingsBox");
+
+let metaAdsAccounts = [];
+let metaAdsCampaigns = [];
+let metaSelectedCampaignId = "";
+
+let metaInstagramAccounts = [];
+let metaInstagramMedia = [];
+
+let metaInstagramSelectedMediaId = "";
+let metaInstagramAfter = "";
+let metaInstagramHasMore = false;
+
+let metaInstagramAccountsLoading = false;
+let metaInstagramMediaLoading = false;
 
 async function getMetaStatus() {
   try {
@@ -6246,15 +6292,29 @@ async function openMetaHub() {
 
 function setMetaHubTab(tabName) {
   metaTabs.forEach(tab => {
-    tab.classList.toggle("is-active", tab.dataset.metaTab === tabName);
+    tab.classList.toggle(
+      "is-active",
+      tab.dataset.metaTab === tabName
+    );
   });
 
   metaPanels.forEach(panel => {
-    panel.classList.toggle("is-active", panel.dataset.metaPanel === tabName);
+    panel.classList.toggle(
+      "is-active",
+      panel.dataset.metaPanel === tabName
+    );
   });
 
   if (tabName === "pages") {
     loadMetaPages();
+  }
+
+  if (tabName === "leads") {
+    loadMetaAdsDashboard();
+  }
+
+  if (tabName === "instagram") {
+    loadMetaInstagramDashboard();
   }
 }
 
@@ -6310,6 +6370,1439 @@ async function loadMetaPages() {
   }
 }
 
+function metaFormatNumber(value, digits = 0) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("uk-UA", {
+    maximumFractionDigits: digits
+  }).format(number);
+}
+
+function metaFormatPercent(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "—";
+  }
+
+  return `${metaFormatNumber(number, 2)}%`;
+}
+
+function metaFormatMoney(value, currency = "USD") {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "—";
+  }
+
+  try {
+    return new Intl.NumberFormat("uk-UA", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2
+    }).format(number);
+  } catch (error) {
+    return `${metaFormatNumber(number, 2)} ${currency}`;
+  }
+}
+
+function getMetaCampaignStatus(statusValue) {
+  const status = String(statusValue || "UNKNOWN").toUpperCase();
+
+  const statuses = {
+    ACTIVE: {
+      text: "Активна",
+      className: "is-active"
+    },
+    PAUSED: {
+      text: "Призупинена",
+      className: "is-paused"
+    },
+    ARCHIVED: {
+      text: "Архівна",
+      className: "is-archived"
+    },
+    DELETED: {
+      text: "Видалена",
+      className: "is-archived"
+    },
+    IN_PROCESS: {
+      text: "Обробляється",
+      className: "is-review"
+    },
+    WITH_ISSUES: {
+      text: "Є проблема",
+      className: "is-error"
+    },
+    DISAPPROVED: {
+      text: "Відхилена",
+      className: "is-error"
+    }
+  };
+
+  return statuses[status] || {
+    text: status,
+    className: "is-review"
+  };
+}
+
+function getMetaActionValue(actions, acceptedTypes) {
+  if (!Array.isArray(actions)) {
+    return 0;
+  }
+
+  return actions.reduce((total, action) => {
+    const actionType = String(action?.action_type || "");
+
+    if (!acceptedTypes.includes(actionType)) {
+      return total;
+    }
+
+    const value = Number(action?.value || 0);
+
+    return total + (Number.isFinite(value) ? value : 0);
+  }, 0);
+}
+
+function getSelectedMetaAdAccount() {
+  const accountId = metaAdAccountSelect?.value;
+
+  return (
+    metaAdsAccounts.find(account => account.id === accountId) ||
+    null
+  );
+}
+
+function renderMetaCampaigns() {
+  if (!metaCampaignsList) {
+    return;
+  }
+
+  if (!metaAdsCampaigns.length) {
+    metaCampaignsList.innerHTML = `
+      <div class="meta-ads-empty">
+        У цьому рекламному кабінеті кампаній не знайдено.
+      </div>
+    `;
+
+    return;
+  }
+
+  metaCampaignsList.innerHTML = metaAdsCampaigns
+    .map(campaign => {
+      const status = getMetaCampaignStatus(
+        campaign.effective_status || campaign.status
+      );
+
+      const selectedClass =
+        campaign.id === metaSelectedCampaignId
+          ? "is-selected"
+          : "";
+
+      return `
+        <button
+          class="meta-campaign-card ${selectedClass}"
+          type="button"
+          data-meta-campaign-id="${escapeAttr(campaign.id || "")}"
+        >
+          <div class="meta-campaign-card__top">
+            <strong>
+              ${escapeHtml(campaign.name || "Кампанія без назви")}
+            </strong>
+
+            <span class="meta-campaign-status ${status.className}">
+              ${escapeHtml(status.text)}
+            </span>
+          </div>
+
+          <div class="meta-campaign-card__meta">
+            ${escapeHtml(campaign.objective || "Ціль не зазначена")}
+          </div>
+
+          <div class="meta-campaign-card__bottom">
+            <span>
+              ${escapeHtml(campaign.buying_type || "AUCTION")}
+            </span>
+
+            <span>
+              ID: ${escapeHtml(campaign.id || "—")}
+            </span>
+          </div>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function renderMetaCampaignDetails(campaign, insight) {
+  if (!metaCampaignDetails) {
+    return;
+  }
+
+  const account = getSelectedMetaAdAccount();
+  const currency = account?.currency || "USD";
+
+  const status = getMetaCampaignStatus(
+    campaign?.effective_status || campaign?.status
+  );
+
+  if (!insight) {
+    metaCampaignDetails.innerHTML = `
+      <div class="meta-campaign-detail__head">
+        <div>
+          <h4>
+            ${escapeHtml(campaign?.name || "Рекламна кампанія")}
+          </h4>
+
+          <p>
+            ${escapeHtml(campaign?.objective || "Ціль не зазначена")}
+          </p>
+        </div>
+
+        <span class="meta-campaign-status ${status.className}">
+          ${escapeHtml(status.text)}
+        </span>
+      </div>
+
+      <div class="meta-ads-empty">
+        За вибраний період статистики немає.
+        Спробуйте вибрати «Увесь час».
+      </div>
+    `;
+
+    return;
+  }
+
+  const actions = Array.isArray(insight.actions)
+    ? insight.actions
+    : [];
+
+  const linkClicks = getMetaActionValue(actions, [
+    "link_click"
+  ]);
+
+  const reactions = getMetaActionValue(actions, [
+    "post_reaction"
+  ]);
+
+  const leadsCount = getMetaActionValue(actions, [
+    "lead",
+    "omni_lead",
+    "onsite_web_lead",
+    "onsite_conversion.lead_grouped",
+    "offsite_conversion.fb_pixel_lead"
+  ]);
+
+  const statistics = [
+    {
+      label: "Витрачено",
+      value: metaFormatMoney(insight.spend, currency)
+    },
+    {
+      label: "Покази",
+      value: metaFormatNumber(insight.impressions)
+    },
+    {
+      label: "Охоплення",
+      value: metaFormatNumber(insight.reach)
+    },
+    {
+      label: "Усі кліки",
+      value: metaFormatNumber(insight.clicks)
+    },
+    {
+      label: "Кліки за посиланням",
+      value: metaFormatNumber(linkClicks)
+    },
+    {
+      label: "Ліди",
+      value: metaFormatNumber(leadsCount)
+    },
+    {
+      label: "CTR",
+      value: metaFormatPercent(insight.ctr)
+    },
+    {
+      label: "CPC",
+      value: metaFormatMoney(insight.cpc, currency)
+    },
+    {
+      label: "CPM",
+      value: metaFormatMoney(insight.cpm, currency)
+    },
+    {
+      label: "Частота",
+      value: metaFormatNumber(insight.frequency, 2)
+    },
+    {
+      label: "Реакції",
+      value: metaFormatNumber(reactions)
+    }
+  ];
+
+  const dates = [
+    insight.date_start,
+    insight.date_stop
+  ].filter(Boolean);
+
+  metaCampaignDetails.innerHTML = `
+    <div class="meta-campaign-detail__head">
+      <div>
+        <h4>
+          ${escapeHtml(
+            campaign?.name ||
+            insight.campaign_name ||
+            "Рекламна кампанія"
+          )}
+        </h4>
+
+        <p>
+          ${escapeHtml(campaign?.objective || "Ціль не зазначена")}
+          ${
+            dates.length
+              ? ` · ${escapeHtml(dates.join(" — "))}`
+              : ""
+          }
+        </p>
+      </div>
+
+      <span class="meta-campaign-status ${status.className}">
+        ${escapeHtml(status.text)}
+      </span>
+    </div>
+
+    <div class="meta-ads-stats-grid">
+      ${statistics
+        .map(statistic => `
+          <article class="meta-stat-card">
+            <span>${escapeHtml(statistic.label)}</span>
+            <strong>${escapeHtml(statistic.value)}</strong>
+          </article>
+        `)
+        .join("")}
+    </div>
+  `;
+}
+
+async function loadMetaCampaignInsights(campaignId) {
+  if (!campaignId || !metaCampaignDetails) {
+    return;
+  }
+
+  metaSelectedCampaignId = campaignId;
+  renderMetaCampaigns();
+
+  const campaign = metaAdsCampaigns.find(
+    item => item.id === campaignId
+  );
+
+  const datePreset =
+    metaAdsPeriodSelect?.value || "last_30d";
+
+  metaCampaignDetails.innerHTML = `
+    <div class="meta-ads-loading">
+      Завантажуємо статистику кампанії...
+    </div>
+  `;
+
+  try {
+    const url =
+      `${META_BACKEND_URL}/api/meta/campaign/insights` +
+      `?campaign_id=${encodeURIComponent(campaignId)}` +
+      `&date_preset=${encodeURIComponent(datePreset)}` +
+      `&t=${Date.now()}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.success) {
+      metaCampaignDetails.innerHTML = `
+        <div class="meta-ads-error">
+          ${escapeHtml(
+            data.error ||
+            "Не вдалося отримати статистику кампанії."
+          )}
+        </div>
+      `;
+
+      return;
+    }
+
+    const insight = Array.isArray(data.insights)
+      ? data.insights[0] || null
+      : null;
+
+    renderMetaCampaignDetails(campaign, insight);
+
+  } catch (error) {
+    console.error("Meta insights error:", error);
+
+    metaCampaignDetails.innerHTML = `
+      <div class="meta-ads-error">
+        Помилка завантаження статистики кампанії.
+      </div>
+    `;
+  }
+}
+
+async function loadMetaCampaigns() {
+  const adAccountId = metaAdAccountSelect?.value;
+
+  if (
+    !adAccountId ||
+    !metaCampaignsList ||
+    !metaCampaignDetails
+  ) {
+    return;
+  }
+
+  metaAdsStatus.textContent =
+    "Завантажуємо рекламні кампанії...";
+
+  metaCampaignsList.innerHTML = `
+    <div class="meta-ads-loading">
+      Завантажуємо кампанії...
+    </div>
+  `;
+
+  metaCampaignDetails.innerHTML = `
+    <div class="meta-ads-empty">
+      Оберіть кампанію зі списку.
+    </div>
+  `;
+
+  try {
+    const url =
+      `${META_BACKEND_URL}/api/meta/campaigns` +
+      `?ad_account_id=${encodeURIComponent(adAccountId)}` +
+      `&t=${Date.now()}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.success) {
+      metaAdsStatus.textContent =
+        data.error ||
+        "Не вдалося отримати рекламні кампанії.";
+
+      metaAdsCampaigns = [];
+      renderMetaCampaigns();
+      return;
+    }
+
+    metaAdsCampaigns = Array.isArray(data.campaigns)
+      ? data.campaigns
+      : [];
+
+    metaAdsStatus.textContent =
+      `Знайдено кампаній: ${metaAdsCampaigns.length}`;
+
+    if (!metaAdsCampaigns.length) {
+      metaSelectedCampaignId = "";
+      renderMetaCampaigns();
+      return;
+    }
+
+    const selectedCampaignStillExists =
+      metaAdsCampaigns.some(
+        campaign =>
+          campaign.id === metaSelectedCampaignId
+      );
+
+    if (!selectedCampaignStillExists) {
+      metaSelectedCampaignId = metaAdsCampaigns[0].id;
+    }
+
+    renderMetaCampaigns();
+
+    await loadMetaCampaignInsights(
+      metaSelectedCampaignId
+    );
+
+  } catch (error) {
+    console.error("Meta campaigns error:", error);
+
+    metaAdsStatus.textContent =
+      "Помилка завантаження рекламних кампаній.";
+
+    metaCampaignsList.innerHTML = `
+      <div class="meta-ads-error">
+        Не вдалося отримати кампанії з Railway.
+      </div>
+    `;
+  }
+}
+
+async function loadMetaAdsDashboard() {
+  if (
+    !metaAdAccountSelect ||
+    !metaAdsStatus ||
+    !metaCampaignsList ||
+    !metaCampaignDetails
+  ) {
+    return;
+  }
+
+  const previousAccountId =
+    metaAdAccountSelect.value;
+
+  metaAdsStatus.textContent =
+    "Завантажуємо рекламні кабінети...";
+
+  metaAdAccountSelect.innerHTML = `
+    <option value="">Завантаження...</option>
+  `;
+
+  metaCampaignsList.innerHTML = `
+    <div class="meta-ads-loading">
+      Завантаження рекламних кабінетів...
+    </div>
+  `;
+
+  metaCampaignDetails.innerHTML = `
+    <div class="meta-ads-empty">
+      Спочатку оберіть рекламний кабінет.
+    </div>
+  `;
+
+  try {
+    const response = await fetch(
+      `${META_BACKEND_URL}/api/meta/adaccounts?t=${Date.now()}`
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      metaAdsStatus.textContent =
+        data.error ||
+        "Не вдалося отримати рекламні кабінети.";
+
+      metaAdAccountSelect.innerHTML = `
+        <option value="">
+          Рекламні кабінети недоступні
+        </option>
+      `;
+
+      return;
+    }
+
+    metaAdsAccounts = Array.isArray(data.accounts)
+      ? data.accounts
+      : [];
+
+    if (!metaAdsAccounts.length) {
+      metaAdsStatus.textContent =
+        "Рекламних кабінетів не знайдено.";
+
+      metaAdAccountSelect.innerHTML = `
+        <option value="">
+          Рекламних кабінетів немає
+        </option>
+      `;
+
+      metaCampaignsList.innerHTML = `
+        <div class="meta-ads-empty">
+          Meta не повернула рекламні кабінети.
+        </div>
+      `;
+
+      return;
+    }
+
+    metaAdAccountSelect.innerHTML = metaAdsAccounts
+      .map(account => `
+        <option value="${escapeAttr(account.id || "")}">
+          ${escapeHtml(
+            account.name ||
+            account.account_id ||
+            "Рекламний кабінет"
+          )}
+          ·
+          ${escapeHtml(account.currency || "")}
+        </option>
+      `)
+      .join("");
+
+    const previousAccountExists =
+      metaAdsAccounts.some(
+        account => account.id === previousAccountId
+      );
+
+    if (previousAccountExists) {
+      metaAdAccountSelect.value = previousAccountId;
+    }
+
+    metaAdsStatus.textContent =
+      `Знайдено рекламних кабінетів: ${metaAdsAccounts.length}`;
+
+    await loadMetaCampaigns();
+
+  } catch (error) {
+    console.error("Meta ad accounts error:", error);
+
+    metaAdsStatus.textContent =
+      "Помилка завантаження рекламних кабінетів.";
+
+    metaAdAccountSelect.innerHTML = `
+      <option value="">Помилка завантаження</option>
+    `;
+
+    metaCampaignsList.innerHTML = `
+      <div class="meta-ads-error">
+        CRM не змогла підключитися до Railway backend.
+      </div>
+    `;
+  }
+}
+
+function metaInstagramFormatDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function metaInstagramMetric(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "—";
+  }
+
+  return metaFormatNumber(value);
+}
+
+function metaInstagramCurrentAccount() {
+  const accountId =
+    metaInstagramAccountSelect?.value || "";
+
+  return (
+    metaInstagramAccounts.find(
+      account => String(account.id) === String(accountId)
+    ) || null
+  );
+}
+
+function metaInstagramMediaImage(item) {
+  return (
+    item?.thumbnail_url ||
+    item?.media_url ||
+    ""
+  );
+}
+
+function metaInstagramTypeLabel(item) {
+  const productType = String(
+    item?.media_product_type || ""
+  ).toUpperCase();
+
+  const mediaType = String(
+    item?.media_type || ""
+  ).toUpperCase();
+
+  if (productType === "REELS") {
+    return "Reel";
+  }
+
+  if (productType === "STORY") {
+    return "Story";
+  }
+
+  if (mediaType === "CAROUSEL_ALBUM") {
+    return "Карусель";
+  }
+
+  if (mediaType === "VIDEO") {
+    return "Відео";
+  }
+
+  if (mediaType === "IMAGE") {
+    return "Фото";
+  }
+
+  return productType || mediaType || "Публікація";
+}
+
+async function metaInstagramRequest(url) {
+  const response = await fetch(url);
+
+  let data;
+
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(
+      "Railway повернув некоректну відповідь."
+    );
+  }
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.error ||
+      "Не вдалося отримати Instagram-дані."
+    );
+  }
+
+  return data;
+}
+
+function renderMetaInstagramProfile() {
+  if (!metaInstagramProfile) return;
+
+  const account = metaInstagramCurrentAccount();
+
+  if (!account) {
+    metaInstagramProfile.innerHTML = `
+      <div class="meta-ads-empty">
+        Instagram-акаунт не вибрано.
+      </div>
+    `;
+    return;
+  }
+
+  const picture = account.profile_picture_url
+    ? `
+      <img
+        src="${escapeAttr(account.profile_picture_url)}"
+        alt="${escapeAttr(account.username || "Instagram")}"
+        loading="lazy"
+      >
+    `
+    : `<span>📸</span>`;
+
+  metaInstagramProfile.innerHTML = `
+    <div class="meta-ig-profile__avatar">
+      ${picture}
+    </div>
+
+    <div class="meta-ig-profile__main">
+      <div class="meta-ig-profile__name">
+        ${escapeHtml(
+          account.name ||
+          account.username ||
+          "Instagram"
+        )}
+      </div>
+
+      <div class="meta-ig-profile__username">
+        @${escapeHtml(account.username || "—")}
+      </div>
+
+      <div class="meta-ig-profile__page">
+        Facebook Page:
+        <b>
+          ${escapeHtml(
+            account.facebook_page_name || "—"
+          )}
+        </b>
+      </div>
+    </div>
+
+    <div class="meta-ig-profile__stats">
+      <div class="meta-ig-profile-stat">
+        <strong>
+          ${metaInstagramMetric(account.followers_count)}
+        </strong>
+        <span>Підписники</span>
+      </div>
+
+      <div class="meta-ig-profile-stat">
+        <strong>
+          ${metaInstagramMetric(account.media_count)}
+        </strong>
+        <span>Публікації</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderMetaInstagramMedia() {
+  if (!metaInstagramMediaList) return;
+
+  if (!metaInstagramMedia.length) {
+    metaInstagramMediaList.innerHTML = `
+      <div class="meta-ads-empty meta-ig-grid-full">
+        У цьому Instagram-акаунті публікацій не знайдено.
+      </div>
+    `;
+    return;
+  }
+
+  metaInstagramMediaList.innerHTML =
+    metaInstagramMedia
+      .map(item => {
+        const image = metaInstagramMediaImage(item);
+
+        const caption = String(
+          item.caption || "Без опису"
+        );
+
+        const shortCaption =
+          caption.length > 115
+            ? `${caption.slice(0, 115)}...`
+            : caption;
+
+        const selectedClass =
+          String(item.id) ===
+          String(metaInstagramSelectedMediaId)
+            ? "is-selected"
+            : "";
+
+        const imageHtml = image
+          ? `
+            <img
+              src="${escapeAttr(image)}"
+              alt="Instagram content"
+              loading="lazy"
+            >
+          `
+          : `
+            <div class="meta-ig-media-card__placeholder">
+              📸
+            </div>
+          `;
+
+        return `
+          <button
+            class="meta-ig-media-card ${selectedClass}"
+            type="button"
+            data-meta-instagram-media-id="${escapeAttr(
+              item.id || ""
+            )}"
+          >
+            <div class="meta-ig-media-card__visual">
+              ${imageHtml}
+
+              <span class="meta-ig-media-type">
+                ${escapeHtml(metaInstagramTypeLabel(item))}
+              </span>
+            </div>
+
+            <div class="meta-ig-media-card__body">
+              <div class="meta-ig-media-card__caption">
+                ${escapeHtml(shortCaption)}
+              </div>
+
+              <div class="meta-ig-media-card__date">
+                ${escapeHtml(
+                  metaInstagramFormatDate(item.timestamp)
+                )}
+              </div>
+            </div>
+          </button>
+        `;
+      })
+      .join("");
+}
+
+function metaInstagramCommentReplies(comment) {
+  if (Array.isArray(comment?.replies)) {
+    return comment.replies;
+  }
+
+  if (Array.isArray(comment?.replies?.data)) {
+    return comment.replies.data;
+  }
+
+  return [];
+}
+
+function renderMetaInstagramComments(commentsData) {
+  if (!commentsData?.success) {
+    return `
+      <div class="meta-ads-error">
+        ${escapeHtml(
+          commentsData?.error ||
+          "Не вдалося завантажити коментарі."
+        )}
+      </div>
+    `;
+  }
+
+  const comments = Array.isArray(commentsData.comments)
+    ? commentsData.comments
+    : [];
+
+  if (!comments.length) {
+    return `
+      <div class="meta-ig-comments-empty">
+        Під цією публікацією коментарів немає.
+      </div>
+    `;
+  }
+
+  return comments
+    .map(comment => {
+      const replies =
+        metaInstagramCommentReplies(comment);
+
+      const repliesHtml = replies.length
+        ? `
+          <div class="meta-ig-replies">
+            ${replies
+              .map(reply => `
+                <div class="meta-ig-reply">
+                  <div class="meta-ig-comment__top">
+                    <strong>
+                      @${escapeHtml(
+                        reply.username || "instagram"
+                      )}
+                    </strong>
+
+                    <span>
+                      ${escapeHtml(
+                        metaInstagramFormatDate(
+                          reply.timestamp
+                        )
+                      )}
+                    </span>
+                  </div>
+
+                  <div class="meta-ig-comment__text">
+                    ${escapeHtml(reply.text || "")}
+                  </div>
+                </div>
+              `)
+              .join("")}
+          </div>
+        `
+        : "";
+
+      return `
+        <article class="meta-ig-comment">
+          <div class="meta-ig-comment__top">
+            <strong>
+              @${escapeHtml(
+                comment.username || "instagram"
+              )}
+            </strong>
+
+            <span>
+              ${escapeHtml(
+                metaInstagramFormatDate(
+                  comment.timestamp
+                )
+              )}
+            </span>
+          </div>
+
+          <div class="meta-ig-comment__text">
+            ${escapeHtml(comment.text || "")}
+          </div>
+
+          <div class="meta-ig-comment__bottom">
+            <span>
+              ❤️ ${metaInstagramMetric(
+                comment.like_count
+              )}
+            </span>
+
+            ${
+              comment.hidden
+                ? `
+                  <span class="meta-ig-hidden-badge">
+                    Прихований
+                  </span>
+                `
+                : ""
+            }
+          </div>
+
+          ${repliesHtml}
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderMetaInstagramDetails(
+  item,
+  insightsData,
+  commentsData
+) {
+  if (!metaInstagramDetails || !item) return;
+
+  const media =
+    insightsData?.media || item;
+
+  const metrics =
+    insightsData?.metrics || {};
+
+  const image =
+    metaInstagramMediaImage(media) ||
+    metaInstagramMediaImage(item);
+
+  const caption = String(
+    media.caption ||
+    item.caption ||
+    "Без опису"
+  );
+
+  const captionHtml = escapeHtml(caption)
+    .replace(/\n/g, "<br>");
+
+  const imageHtml = image
+    ? `
+      <img
+        src="${escapeAttr(image)}"
+        alt="Instagram publication"
+        loading="lazy"
+      >
+    `
+    : `
+      <div class="meta-ig-detail__placeholder">
+        📸
+      </div>
+    `;
+
+  const stats = [
+    {
+      label: "Перегляди",
+      value: metaInstagramMetric(metrics.views)
+    },
+    {
+      label: "Охоплення",
+      value: metaInstagramMetric(metrics.reach)
+    },
+    {
+      label: "Лайки",
+      value: metaInstagramMetric(media.like_count)
+    },
+    {
+      label: "Коментарі",
+      value: metaInstagramMetric(media.comments_count)
+    },
+    {
+      label: "Збереження",
+      value: metaInstagramMetric(metrics.saved)
+    },
+    {
+      label: "Поширення",
+      value: metaInstagramMetric(metrics.shares)
+    }
+  ];
+
+  const insightWarning =
+    insightsData?.success === false
+      ? `
+        <div class="meta-ig-warning">
+          ${escapeHtml(
+            insightsData.error ||
+            "Для цієї публікації статистика недоступна."
+          )}
+        </div>
+      `
+      : "";
+
+  metaInstagramDetails.innerHTML = `
+    <div class="meta-ig-detail">
+      <div class="meta-ig-detail__media">
+        ${imageHtml}
+      </div>
+
+      <div class="meta-ig-detail__head">
+        <div>
+          <h4>
+            ${escapeHtml(metaInstagramTypeLabel(media))}
+          </h4>
+
+          <p>
+            ${escapeHtml(
+              metaInstagramFormatDate(media.timestamp)
+            )}
+          </p>
+        </div>
+
+        ${
+          media.permalink
+            ? `
+              <a
+                class="btn btn-ghost btn-sm"
+                href="${escapeAttr(media.permalink)}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Відкрити в Instagram ↗
+              </a>
+            `
+            : ""
+        }
+      </div>
+
+      <div class="meta-ig-caption">
+        ${captionHtml}
+      </div>
+
+      ${insightWarning}
+
+      <div class="meta-ig-stats-grid">
+        ${stats
+          .map(stat => `
+            <article class="meta-ig-stat-card">
+              <span>${escapeHtml(stat.label)}</span>
+              <strong>${escapeHtml(stat.value)}</strong>
+            </article>
+          `)
+          .join("")}
+      </div>
+
+      <div class="meta-ig-comments-head">
+        <div>
+          <h4>Коментарі</h4>
+          <p>
+            Коментарі та відповіді під вибраною публікацією.
+          </p>
+        </div>
+
+        <span class="meta-ig-comments-count">
+          ${metaInstagramMetric(
+            commentsData?.count
+          )}
+        </span>
+      </div>
+
+      <div class="meta-ig-comments-list">
+        ${renderMetaInstagramComments(commentsData)}
+      </div>
+    </div>
+  `;
+}
+
+async function loadMetaInstagramDetails(mediaId) {
+  if (
+    !mediaId ||
+    !metaInstagramDetails
+  ) {
+    return;
+  }
+
+  const account = metaInstagramCurrentAccount();
+
+  if (!account?.id) {
+    return;
+  }
+
+  const item = metaInstagramMedia.find(
+    media => String(media.id) === String(mediaId)
+  );
+
+  if (!item) {
+    return;
+  }
+
+  metaInstagramSelectedMediaId = mediaId;
+  renderMetaInstagramMedia();
+
+  metaInstagramDetails.innerHTML = `
+    <div class="meta-ads-loading">
+      Завантажуємо статистику та коментарі...
+    </div>
+  `;
+
+  const insightsUrl =
+    `${META_BACKEND_URL}` +
+    `/api/meta/instagram/media/insights` +
+    `?instagram_id=${encodeURIComponent(account.id)}` +
+    `&media_id=${encodeURIComponent(mediaId)}` +
+    `&t=${Date.now()}`;
+
+  const commentsUrl =
+    `${META_BACKEND_URL}` +
+    `/api/meta/instagram/comments` +
+    `?instagram_id=${encodeURIComponent(account.id)}` +
+    `&media_id=${encodeURIComponent(mediaId)}` +
+    `&limit=50` +
+    `&t=${Date.now()}`;
+
+  const results = await Promise.allSettled([
+    metaInstagramRequest(insightsUrl),
+    metaInstagramRequest(commentsUrl)
+  ]);
+
+  const insightsData =
+    results[0].status === "fulfilled"
+      ? results[0].value
+      : {
+          success: false,
+          error:
+            results[0].reason?.message ||
+            "Статистика недоступна."
+        };
+
+  const commentsData =
+    results[1].status === "fulfilled"
+      ? results[1].value
+      : {
+          success: false,
+          count: 0,
+          comments: [],
+          error:
+            results[1].reason?.message ||
+            "Коментарі недоступні."
+        };
+
+  renderMetaInstagramDetails(
+    item,
+    insightsData,
+    commentsData
+  );
+}
+
+async function loadMetaInstagramMedia({
+  append = false
+} = {}) {
+  if (
+    metaInstagramMediaLoading ||
+    !metaInstagramMediaList
+  ) {
+    return;
+  }
+
+  const account = metaInstagramCurrentAccount();
+
+  if (!account?.id) {
+    metaInstagramStatus.textContent =
+      "Оберіть Instagram-акаунт.";
+    return;
+  }
+
+  metaInstagramMediaLoading = true;
+
+  if (!append) {
+    metaInstagramMedia = [];
+    metaInstagramAfter = "";
+    metaInstagramHasMore = false;
+    metaInstagramSelectedMediaId = "";
+
+    metaInstagramMediaList.innerHTML = `
+      <div class="meta-ads-loading meta-ig-grid-full">
+        Завантажуємо публікації Instagram...
+      </div>
+    `;
+
+    metaInstagramDetails.innerHTML = `
+      <div class="meta-ads-empty">
+        Оберіть публікацію зі списку.
+      </div>
+    `;
+  }
+
+  metaInstagramLoadMoreBtn.disabled = true;
+
+  try {
+    let url =
+      `${META_BACKEND_URL}` +
+      `/api/meta/instagram/media` +
+      `?instagram_id=${encodeURIComponent(account.id)}` +
+      `&limit=25` +
+      `&t=${Date.now()}`;
+
+    if (append && metaInstagramAfter) {
+      url +=
+        `&after=${encodeURIComponent(
+          metaInstagramAfter
+        )}`;
+    }
+
+    const data = await metaInstagramRequest(url);
+
+    const newItems = Array.isArray(data.media)
+      ? data.media
+      : [];
+
+    if (append) {
+      const existingIds = new Set(
+        metaInstagramMedia.map(item =>
+          String(item.id)
+        )
+      );
+
+      for (const item of newItems) {
+        if (!existingIds.has(String(item.id))) {
+          metaInstagramMedia.push(item);
+        }
+      }
+    } else {
+      metaInstagramMedia = newItems;
+    }
+
+    metaInstagramAfter =
+      data.paging?.cursors?.after || "";
+
+    metaInstagramHasMore = Boolean(
+      data.paging?.next &&
+      metaInstagramAfter
+    );
+
+    renderMetaInstagramMedia();
+
+    metaInstagramStatus.textContent =
+      `Завантажено публікацій: ` +
+      `${metaInstagramMedia.length}`;
+
+    if (
+      !metaInstagramSelectedMediaId &&
+      metaInstagramMedia.length
+    ) {
+      await loadMetaInstagramDetails(
+        metaInstagramMedia[0].id
+      );
+    }
+
+  } catch (error) {
+    console.error(
+      "Instagram media error:",
+      error
+    );
+
+    metaInstagramStatus.textContent =
+      error.message ||
+      "Помилка завантаження Instagram-публікацій.";
+
+    if (!append) {
+      metaInstagramMediaList.innerHTML = `
+        <div class="meta-ads-error meta-ig-grid-full">
+          Не вдалося отримати Instagram-публікації.
+        </div>
+      `;
+    }
+
+  } finally {
+    metaInstagramMediaLoading = false;
+
+    metaInstagramLoadMoreBtn.disabled = false;
+    metaInstagramLoadMoreBtn.hidden =
+      !metaInstagramHasMore;
+  }
+}
+
+async function loadMetaInstagramDashboard() {
+  if (
+    metaInstagramAccountsLoading ||
+    !metaInstagramStatus ||
+    !metaInstagramAccountSelect
+  ) {
+    return;
+  }
+
+  metaInstagramAccountsLoading = true;
+
+  const previousAccountId =
+    metaInstagramAccountSelect.value;
+
+  metaInstagramStatus.textContent =
+    "Завантажуємо Instagram-профіль...";
+
+  metaRefreshInstagramBtn.disabled = true;
+
+  try {
+    const data = await metaInstagramRequest(
+      `${META_BACKEND_URL}` +
+      `/api/meta/instagram/accounts` +
+      `?t=${Date.now()}`
+    );
+
+    metaInstagramAccounts =
+      Array.isArray(data.accounts)
+        ? data.accounts
+        : [];
+
+    if (!metaInstagramAccounts.length) {
+      metaInstagramAccountSelect.innerHTML = `
+        <option value="">
+          Instagram-акаунтів не знайдено
+        </option>
+      `;
+
+      metaInstagramStatus.textContent =
+        "Підключених Instagram-акаунтів не знайдено.";
+
+      metaInstagramProfile.innerHTML = `
+        <div class="meta-ads-empty">
+          Перевірте зв’язок Instagram із Facebook Page.
+        </div>
+      `;
+
+      return;
+    }
+
+    metaInstagramAccountSelect.innerHTML =
+      metaInstagramAccounts
+        .map(account => `
+          <option value="${escapeAttr(
+            account.id || ""
+          )}">
+            @${escapeHtml(
+              account.username ||
+              account.name ||
+              "instagram"
+            )}
+          </option>
+        `)
+        .join("");
+
+    const previousExists =
+      metaInstagramAccounts.some(
+        account =>
+          String(account.id) ===
+          String(previousAccountId)
+      );
+
+    if (previousExists) {
+      metaInstagramAccountSelect.value =
+        previousAccountId;
+    }
+
+    renderMetaInstagramProfile();
+
+    metaInstagramStatus.textContent =
+      `Instagram підключено: ` +
+      `@${metaInstagramCurrentAccount()?.username || "—"}`;
+
+    await loadMetaInstagramMedia({
+      append: false
+    });
+
+  } catch (error) {
+    console.error(
+      "Instagram accounts error:",
+      error
+    );
+
+    metaInstagramStatus.textContent =
+      error.message ||
+      "Помилка завантаження Instagram-профілю.";
+
+    metaInstagramProfile.innerHTML = `
+      <div class="meta-ads-error">
+        CRM не змогла отримати Instagram-профіль
+        із Railway.
+      </div>
+    `;
+
+  } finally {
+    metaInstagramAccountsLoading = false;
+    metaRefreshInstagramBtn.disabled = false;
+  }
+}
+
 connectMetaBtn?.addEventListener("click", () => {
   window.location.href = `${META_BACKEND_URL}/api/meta/login`;
 });
@@ -6350,6 +7843,98 @@ metaTabs.forEach(tab => {
 });
 
 metaRefreshPagesBtn?.addEventListener("click", loadMetaPages);
+
+metaRefreshAdsBtn?.addEventListener(
+  "click",
+  loadMetaAdsDashboard
+);
+
+metaAdAccountSelect?.addEventListener(
+  "change",
+  () => {
+    metaSelectedCampaignId = "";
+    loadMetaCampaigns();
+  }
+);
+
+metaAdsPeriodSelect?.addEventListener(
+  "change",
+  () => {
+    if (metaSelectedCampaignId) {
+      loadMetaCampaignInsights(
+        metaSelectedCampaignId
+      );
+    }
+  }
+);
+
+metaCampaignsList?.addEventListener(
+  "click",
+  event => {
+    const campaignButton = event.target.closest(
+      "[data-meta-campaign-id]"
+    );
+
+    if (!campaignButton) {
+      return;
+    }
+
+    const campaignId =
+      campaignButton.dataset.metaCampaignId;
+
+    loadMetaCampaignInsights(campaignId);
+  }
+);
+
+metaRefreshInstagramBtn?.addEventListener(
+  "click",
+  () => {
+    loadMetaInstagramDashboard();
+  }
+);
+
+metaInstagramAccountSelect?.addEventListener(
+  "change",
+  () => {
+    metaInstagramMedia = [];
+    metaInstagramSelectedMediaId = "";
+    metaInstagramAfter = "";
+    metaInstagramHasMore = false;
+
+    renderMetaInstagramProfile();
+
+    loadMetaInstagramMedia({
+      append: false
+    });
+  }
+);
+
+metaInstagramLoadMoreBtn?.addEventListener(
+  "click",
+  () => {
+    loadMetaInstagramMedia({
+      append: true
+    });
+  }
+);
+
+metaInstagramMediaList?.addEventListener(
+  "click",
+  event => {
+    const mediaButton = event.target.closest(
+      "[data-meta-instagram-media-id]"
+    );
+
+    if (!mediaButton) {
+      return;
+    }
+
+    const mediaId =
+      mediaButton.dataset.metaInstagramMediaId;
+
+    loadMetaInstagramDetails(mediaId);
+  }
+);
 
 setTimeout(() => {
   const params = new URLSearchParams(window.location.search);

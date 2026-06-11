@@ -998,30 +998,175 @@
         </section>
 
         <section class="gws-panel" data-meta-panel="leads">
-          <div class="gws-panel__head">
-            <div>
-              <h3>Meta Lead Ads</h3>
-              <p>Тут будуть заявки з Facebook / Instagram реклами після підключення Webhooks.</p>
-            </div>
-          </div>
+  <div class="gws-panel__head">
+    <div>
+      <h3>Meta Lead Ads</h3>
+      <p>
+        Рекламні кабінети, кампанії та статистика Facebook / Instagram реклами.
+        Автоматичне отримання заявок через Webhooks додамо наступним етапом.
+      </p>
+    </div>
 
-          <div class="gws-status-line">
-            Наступний етап: підключимо Lead Ads webhook і автоматичне створення лідів у CRM.
-          </div>
-        </section>
+    <div class="gws-actions-row">
+      <button id="metaRefreshAdsBtn" class="btn btn-primary" type="button">
+        🔄 Оновити рекламу
+      </button>
+    </div>
+  </div>
 
-        <section class="gws-panel" data-meta-panel="instagram">
-          <div class="gws-panel__head">
-            <div>
-              <h3>Instagram</h3>
-              <p>Тут буде Instagram Business акаунт, профіль, коментарі та майбутні інтеграції.</p>
-            </div>
-          </div>
+  <div class="meta-ads-toolbar">
+    <label class="meta-ads-field">
+      <span>Рекламний кабінет</span>
 
-          <div class="gws-status-line">
-            Instagram підключимо після Facebook Pages, бо він прив’язаний до сторінки Meta.
-          </div>
-        </section>
+      <select id="metaAdAccountSelect">
+        <option value="">Оберіть рекламний кабінет</option>
+      </select>
+    </label>
+
+    <label class="meta-ads-field">
+      <span>Період статистики</span>
+
+      <select id="metaAdsPeriodSelect">
+        <option value="last_7d">Останні 7 днів</option>
+        <option value="last_30d" selected>Останні 30 днів</option>
+        <option value="this_month">Поточний місяць</option>
+        <option value="last_month">Минулий місяць</option>
+        <option value="maximum">Увесь час</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="metaAdsStatus" class="gws-status-line">
+    Відкрийте вкладку Lead Ads або натисніть «Оновити рекламу».
+  </div>
+
+  <div class="meta-ads-layout">
+    <div class="meta-ads-box">
+      <div class="meta-ads-box__head">
+        <div>
+          <h4>Рекламні кампанії</h4>
+          <p>Натисніть на кампанію, щоб переглянути статистику.</p>
+        </div>
+      </div>
+
+      <div id="metaCampaignsList" class="meta-campaigns-list">
+        <div class="meta-ads-empty">
+          Кампанії ще не завантажені.
+        </div>
+      </div>
+    </div>
+
+    <div class="meta-ads-box">
+      <div class="meta-ads-box__head">
+        <div>
+          <h4>Статистика кампанії</h4>
+          <p>Витрати, покази, охоплення, кліки та результати.</p>
+        </div>
+      </div>
+
+      <div id="metaCampaignDetails" class="meta-campaign-details">
+        <div class="meta-ads-empty">
+          Оберіть кампанію зі списку.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="gws-panel" data-meta-panel="instagram">
+  <div class="gws-panel__head">
+    <div>
+      <h3>Instagram</h3>
+      <p>
+        Профіль, публікації, Reels, статистика та коментарі
+        професійного Instagram-акаунту.
+      </p>
+    </div>
+
+    <div class="gws-actions-row">
+      <button
+        id="metaRefreshInstagramBtn"
+        class="btn btn-primary"
+        type="button"
+      >
+        🔄 Оновити Instagram
+      </button>
+    </div>
+  </div>
+
+  <div id="metaInstagramStatus" class="gws-status-line">
+    Відкрийте вкладку Instagram або натисніть «Оновити Instagram».
+  </div>
+
+  <div class="meta-ig-toolbar">
+    <label class="meta-ads-field">
+      <span>Instagram-акаунт</span>
+
+      <select id="metaInstagramAccountSelect">
+        <option value="">Оберіть Instagram-акаунт</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="metaInstagramProfile" class="meta-ig-profile">
+    <div class="meta-ads-empty">
+      Дані Instagram-профілю ще не завантажені.
+    </div>
+  </div>
+
+  <div class="meta-ig-layout">
+    <section class="meta-ig-box">
+      <div class="meta-ig-box__head">
+        <div>
+          <h4>Публікації та Reels</h4>
+          <p>
+            Натисніть на публікацію, щоб переглянути статистику
+            та коментарі.
+          </p>
+        </div>
+      </div>
+
+      <div
+        id="metaInstagramMediaList"
+        class="meta-ig-media-grid"
+      >
+        <div class="meta-ads-empty meta-ig-grid-full">
+          Публікації ще не завантажені.
+        </div>
+      </div>
+
+      <button
+        id="metaInstagramLoadMoreBtn"
+        class="btn btn-ghost meta-ig-load-more"
+        type="button"
+        hidden
+      >
+        Завантажити ще публікації
+      </button>
+    </section>
+
+    <section class="meta-ig-box">
+      <div class="meta-ig-box__head">
+        <div>
+          <h4>Статистика та коментарі</h4>
+          <p>
+            Перегляди, охоплення, лайки, збереження,
+            поширення та коментарі.
+          </p>
+        </div>
+      </div>
+
+      <div
+        id="metaInstagramDetails"
+        class="meta-ig-details"
+      >
+        <div class="meta-ads-empty">
+          Оберіть публікацію зі списку.
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
 
         <section class="gws-panel" data-meta-panel="direct">
           <div class="gws-panel__head">
