@@ -1098,21 +1098,63 @@
     Відкрийте вкладку Instagram або натисніть «Оновити Instagram».
   </div>
 
-  <div class="meta-ig-toolbar">
-    <label class="meta-ads-field">
-      <span>Instagram-акаунт</span>
+  <div class="meta-ig-toolbar meta-ig-toolbar--overview">
+  <label class="meta-ads-field">
+    <span>Instagram-акаунт</span>
 
-      <select id="metaInstagramAccountSelect">
-        <option value="">Оберіть Instagram-акаунт</option>
-      </select>
-    </label>
-  </div>
+    <select id="metaInstagramAccountSelect">
+      <option value="">Оберіть Instagram-акаунт</option>
+    </select>
+  </label>
+
+  <label class="meta-ads-field">
+    <span>Період статистики</span>
+
+    <select id="metaInstagramPeriodSelect">
+      <option value="last_7d">
+        Останні 7 днів
+      </option>
+
+      <option value="last_30d" selected>
+        Останні 30 днів
+      </option>
+
+      <option value="this_month">
+        Поточний місяць
+      </option>
+
+      <option value="last_month">
+        Минулий місяць
+      </option>
+    </select>
+  </label>
+</div>
 
   <div id="metaInstagramProfile" class="meta-ig-profile">
     <div class="meta-ads-empty">
       Дані Instagram-профілю ще не завантажені.
     </div>
   </div>
+
+  <section class="meta-ig-overview">
+  <div class="meta-ig-overview__head">
+    <div>
+      <h4>Загальна статистика профілю</h4>
+      <p>
+        Перегляди, охоплення та взаємодії за вибраний період.
+      </p>
+    </div>
+  </div>
+
+  <div
+    id="metaInstagramProfileInsights"
+    class="meta-ig-overview__content"
+  >
+    <div class="meta-ads-empty">
+      Статистика профілю ще не завантажена.
+    </div>
+  </div>
+</section>
 
   <div class="meta-ig-layout">
     <section class="meta-ig-box">

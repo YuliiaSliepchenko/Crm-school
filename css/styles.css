@@ -4836,3 +4836,216 @@ body.gws-lock .gws-hub *{
     margin-left:0;
   }
 }
+
+/* ===== INSTAGRAM PROFILE OVERVIEW ===== */
+
+.meta-ig-toolbar--overview{
+  max-width:none;
+  display:grid;
+  grid-template-columns:
+    minmax(280px, 1fr)
+    minmax(220px, 320px);
+  gap:12px;
+  align-items:end;
+}
+
+.meta-ig-overview{
+  margin-bottom:16px;
+  padding:16px;
+  border:1px solid rgba(139,92,246,.16);
+  border-radius:20px;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(139,92,246,.09),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(236,72,153,.07),
+      transparent 30%
+    ),
+    rgba(255,255,255,.94);
+  box-shadow:0 12px 30px rgba(15,23,42,.06);
+}
+
+.meta-ig-overview__head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.meta-ig-overview__head h4{
+  margin:0;
+  color:#172033;
+  font-size:18px;
+  font-weight:950;
+}
+
+.meta-ig-overview__head p{
+  margin:5px 0 0;
+  color:#64748b;
+  font-size:12px;
+  font-weight:750;
+}
+
+.meta-ig-overview__content{
+  min-height:120px;
+}
+
+.meta-ig-overview__meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:12px;
+  padding:10px 12px;
+  border:1px solid #eef2ff;
+  border-radius:14px;
+  background:rgba(248,250,252,.86);
+}
+
+.meta-ig-overview__meta > div:first-child{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+}
+
+.meta-ig-overview__meta strong{
+  color:#172033;
+  font-size:12px;
+  font-weight:950;
+}
+
+.meta-ig-overview__meta span{
+  color:#64748b;
+  font-size:11px;
+  font-weight:800;
+}
+
+.meta-ig-overview__account{
+  flex:0 0 auto;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fdf2f8;
+  color:#be185d;
+  font-size:11px;
+  font-weight:950;
+}
+
+.meta-ig-overview-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap:10px;
+}
+
+.meta-ig-overview-card{
+  min-width:0;
+  padding:13px;
+  border:1px solid #e8edf5;
+  border-radius:16px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.98),
+      rgba(248,250,252,.92)
+    );
+  box-shadow:0 7px 18px rgba(15,23,42,.04);
+}
+
+.meta-ig-overview-card__top{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin-bottom:9px;
+}
+
+.meta-ig-overview-card__icon{
+  width:27px;
+  height:27px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  border-radius:9px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(249,115,22,.12),
+      rgba(236,72,153,.12),
+      rgba(139,92,246,.12)
+    );
+  font-size:13px;
+}
+
+.meta-ig-overview-card__label{
+  overflow:hidden;
+  color:#64748b;
+  font-size:9px;
+  font-weight:950;
+  text-transform:uppercase;
+  text-overflow:ellipsis;
+}
+
+.meta-ig-overview-card > strong{
+  display:block;
+  color:#172033;
+  font-size:22px;
+  font-weight:950;
+}
+
+.meta-ig-overview-card > small{
+  display:block;
+  margin-top:5px;
+  color:#94a3b8;
+  font-size:9px;
+  font-weight:800;
+  line-height:1.35;
+}
+
+.meta-ig-overview__warning{
+  margin-top:11px;
+  padding:10px 12px;
+  border:1px solid #fed7aa;
+  border-radius:13px;
+  background:#fff7ed;
+  color:#9a3412;
+  font-size:11px;
+  font-weight:850;
+}
+
+@media (max-width:1200px){
+  .meta-ig-overview-grid{
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width:850px){
+  .meta-ig-toolbar--overview{
+    grid-template-columns:1fr;
+  }
+
+  .meta-ig-overview-grid{
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width:520px){
+  .meta-ig-overview__meta{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .meta-ig-overview-grid{
+    grid-template-columns:1fr;
+  }
+
+  .meta-ig-overview__account{
+    align-self:flex-start;
+  }
+}

@@ -6124,8 +6124,16 @@ const metaInstagramStatus =
 const metaInstagramAccountSelect =
   document.getElementById("metaInstagramAccountSelect");
 
+const metaInstagramPeriodSelect =
+  document.getElementById("metaInstagramPeriodSelect");
+
 const metaInstagramProfile =
   document.getElementById("metaInstagramProfile");
+
+const metaInstagramProfileInsights =
+  document.getElementById(
+    "metaInstagramProfileInsights"
+  );
 
 const metaInstagramMediaList =
   document.getElementById("metaInstagramMediaList");
@@ -6152,6 +6160,7 @@ let metaInstagramHasMore = false;
 
 let metaInstagramAccountsLoading = false;
 let metaInstagramMediaLoading = false;
+let metaInstagramInsightsLoading = false;
 
 async function getMetaStatus() {
   try {
@@ -7133,6 +7142,283 @@ function renderMetaInstagramProfile() {
   `;
 }
 
+function metaInstagramPeriodLabel(preset) {
+  const labels = {
+    last_7d: "Останні 7 днів",
+    last_30d: "Останні 30 днів",
+    this_month: "Поточний місяць",
+    last_month: "Минулий місяць"
+  };
+
+  return labels[preset] || "Останні 30 днів";
+}
+
+
+function metaInstagramDateOnly(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
+
+function metaInstagramOverviewValue(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "—";
+  }
+
+  return metaInstagramMetric(value);
+}
+
+
+function renderMetaInstagramProfileInsights(data) {
+  if (!metaInstagramProfileInsights) {
+    return;
+  }
+
+  const metrics = data?.metrics || {};
+  const profile = data?.profile || {};
+  const metricErrors = data?.metric_errors || {};
+
+  const reach = Number(metrics.reach || 0);
+  const interactions = Number(
+    metrics.total_interactions || 0
+  );
+
+  const engagementRate =
+    reach > 0
+      ? `${(
+          interactions /
+          reach *
+          100
+        ).toFixed(2)}%`
+      : "—";
+
+  const cards = [
+    {
+      icon: "👁",
+      label: "Перегляди",
+      value: metrics.views,
+      hint: "Усі перегляди контенту"
+    },
+    {
+      icon: "🌍",
+      label: "Охоплення",
+      value: metrics.reach,
+      hint: "Унікальні акаунти"
+    },
+    {
+      icon: "💜",
+      label: "Залучені акаунти",
+      value: metrics.accounts_engaged,
+      hint: "Люди, які взаємодіяли"
+    },
+    {
+      icon: "⚡",
+      label: "Усього взаємодій",
+      value: metrics.total_interactions,
+      hint: "Лайки, коментарі та інші дії"
+    },
+    {
+      icon: "📈",
+      label: "Рівень взаємодії",
+      value: engagementRate,
+      isFormatted: true,
+      hint: "Взаємодії відносно охоплення"
+    },
+    {
+      icon: "🔗",
+      label: "Кліки за посиланням",
+      value: metrics.profile_links_taps,
+      hint: "Переходи з профілю"
+    },
+    {
+      icon: "👥",
+      label: "Підписники зараз",
+      value: profile.followers_count,
+      hint: "Поточна кількість"
+    },
+    {
+      icon: "📸",
+      label: "Публікації всього",
+      value: profile.media_count,
+      hint: "Загальна кількість контенту"
+    }
+  ];
+
+  const errorsCount =
+    Object.keys(metricErrors).length;
+
+  const rangeText =
+    `${metaInstagramDateOnly(data?.since)}` +
+    ` — ` +
+    `${metaInstagramDateOnly(data?.until)}`;
+
+  metaInstagramProfileInsights.innerHTML = `
+    <div class="meta-ig-overview__meta">
+      <div>
+        <strong>
+          ${escapeHtml(
+            metaInstagramPeriodLabel(
+              data?.date_preset
+            )
+          )}
+        </strong>
+
+        <span>
+          ${escapeHtml(rangeText)}
+        </span>
+      </div>
+
+      <div class="meta-ig-overview__account">
+        @${escapeHtml(
+          profile.username ||
+          metaInstagramCurrentAccount()?.username ||
+          "instagram"
+        )}
+      </div>
+    </div>
+
+    <div class="meta-ig-overview-grid">
+      ${cards
+        .map(card => `
+          <article class="meta-ig-overview-card">
+            <div class="meta-ig-overview-card__top">
+              <span class="meta-ig-overview-card__icon">
+                ${card.icon}
+              </span>
+
+              <span class="meta-ig-overview-card__label">
+                ${escapeHtml(card.label)}
+              </span>
+            </div>
+
+            <strong>
+              ${
+                card.isFormatted
+                  ? escapeHtml(card.value)
+                  : escapeHtml(
+                      metaInstagramOverviewValue(
+                        card.value
+                      )
+                    )
+              }
+            </strong>
+
+            <small>
+              ${escapeHtml(card.hint)}
+            </small>
+          </article>
+        `)
+        .join("")}
+    </div>
+
+    ${
+      errorsCount
+        ? `
+          <div class="meta-ig-overview__warning">
+            Частина метрик недоступна для цього акаунта:
+            ${errorsCount}.
+            Решта статистики завантажена правильно.
+          </div>
+        `
+        : ""
+    }
+  `;
+}
+
+
+async function loadMetaInstagramProfileInsights() {
+  if (
+    metaInstagramInsightsLoading ||
+    !metaInstagramProfileInsights
+  ) {
+    return;
+  }
+
+  const account = metaInstagramCurrentAccount();
+
+  if (!account?.id) {
+    metaInstagramProfileInsights.innerHTML = `
+      <div class="meta-ads-empty">
+        Спочатку оберіть Instagram-акаунт.
+      </div>
+    `;
+    return;
+  }
+
+  metaInstagramInsightsLoading = true;
+
+  if (metaInstagramPeriodSelect) {
+    metaInstagramPeriodSelect.disabled = true;
+  }
+
+  metaInstagramProfileInsights.innerHTML = `
+    <div class="meta-ads-loading">
+      Завантажуємо загальну статистику Instagram...
+    </div>
+  `;
+
+  const datePreset =
+    metaInstagramPeriodSelect?.value ||
+    "last_30d";
+
+  try {
+    const url =
+      `${META_BACKEND_URL}` +
+      `/api/meta/instagram/account/insights` +
+      `?instagram_id=${encodeURIComponent(account.id)}` +
+      `&date_preset=${encodeURIComponent(datePreset)}` +
+      `&t=${Date.now()}`;
+
+    const data = await metaInstagramRequest(url);
+
+    if (data.profile) {
+      Object.assign(account, data.profile);
+      renderMetaInstagramProfile();
+    }
+
+    renderMetaInstagramProfileInsights(data);
+
+  } catch (error) {
+    console.error(
+      "Instagram profile insights error:",
+      error
+    );
+
+    metaInstagramProfileInsights.innerHTML = `
+      <div class="meta-ads-error">
+        ${escapeHtml(
+          error.message ||
+          "Не вдалося завантажити статистику профілю."
+        )}
+      </div>
+    `;
+
+  } finally {
+    metaInstagramInsightsLoading = false;
+
+    if (metaInstagramPeriodSelect) {
+      metaInstagramPeriodSelect.disabled = false;
+    }
+  }
+}
+
 function renderMetaInstagramMedia() {
   if (!metaInstagramMediaList) return;
 
@@ -7910,13 +8196,15 @@ async function loadMetaInstagramDashboard() {
 
     renderMetaInstagramProfile();
 
-    metaInstagramStatus.textContent =
-      `Instagram підключено: ` +
-      `@${metaInstagramCurrentAccount()?.username || "—"}`;
+metaInstagramStatus.textContent =
+  `Instagram підключено: ` +
+  `@${metaInstagramCurrentAccount()?.username || "—"}`;
 
-    await loadMetaInstagramMedia({
-      append: false
-    });
+await loadMetaInstagramProfileInsights();
+
+await loadMetaInstagramMedia({
+  append: false
+});
 
   } catch (error) {
     console.error(
@@ -8033,7 +8321,7 @@ metaRefreshInstagramBtn?.addEventListener(
 
 metaInstagramAccountSelect?.addEventListener(
   "change",
-  () => {
+  async () => {
     metaInstagramMedia = [];
     metaInstagramSelectedMediaId = "";
     metaInstagramAfter = "";
@@ -8041,9 +8329,18 @@ metaInstagramAccountSelect?.addEventListener(
 
     renderMetaInstagramProfile();
 
-    loadMetaInstagramMedia({
+    await loadMetaInstagramProfileInsights();
+
+    await loadMetaInstagramMedia({
       append: false
     });
+  }
+);
+
+metaInstagramPeriodSelect?.addEventListener(
+  "change",
+  async () => {
+    await loadMetaInstagramProfileInsights();
   }
 );
 
