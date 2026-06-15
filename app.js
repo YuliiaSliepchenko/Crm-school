@@ -6580,6 +6580,42 @@ async function metaFacebookRequest(url) {
   return data;
 }
 
+async function metaFacebookCommentAction(
+  path,
+  method,
+  payload
+) {
+  const response = await fetch(
+    `${META_BACKEND_URL}${path}`,
+    {
+      method,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+
+  let data;
+
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(
+      "Сервер повернув некоректну відповідь."
+    );
+  }
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.error ||
+      "Не вдалося виконати дію з коментарем."
+    );
+  }
+
+  return data;
+}
+
 
 function renderMetaFacebookPage() {
   if (!metaPagesList) {
@@ -6928,16 +6964,162 @@ function renderMetaFacebookDetails({
     commentsData?.comments || [];
 
   const commentsHtml =
-    comments.length
-      ? comments
-          .map(comment => `
-            <article class="meta-fb-comment">
+  comments.length
+    ? comments
+        .map(comment => {
+          const commentId = String(
+            comment.id || ""
+          );
+
+          const authorName = String(
+            comment?.author?.name ||
+            "Користувач Facebook"
+          );
+
+          const replies = Array.isArray(
+            comment.replies
+          )
+            ? comment.replies
+            : [];
+
+          const repliesHtml = replies.length
+            ? `
+              <div class="meta-ig-replies">
+                ${replies
+                  .map(reply => `
+                    <div class="meta-ig-reply">
+                      <div class="meta-fb-comment__top">
+                        <strong>
+                          ${escapeHtml(
+                            reply?.author?.name ||
+                            "Itenaischool"
+                          )}
+                        </strong>
+
+                        <span>
+                          ${escapeHtml(
+                            metaFacebookFormatDate(
+                              reply.created_time
+                            )
+                          )}
+                        </span>
+                      </div>
+
+                      <div class="meta-fb-comment__text">
+                        ${escapeHtml(
+                          reply.message || ""
+                        )}
+                      </div>
+                    </div>
+                  `)
+                  .join("")}
+              </div>
+            `
+            : "";
+
+          const replyButton =
+            comment.can_comment !== false
+              ? `
+                <button
+                  class="meta-ig-comment-action is-reply"
+                  type="button"
+                  data-fb-comment-action="reply-open"
+                  data-comment-id="${escapeAttr(commentId)}"
+                >
+                  ↩ Відповісти
+                </button>
+              `
+              : "";
+
+          const visibilityButton =
+            comment.can_hide
+              ? `
+                <button
+                  class="meta-ig-comment-action is-visibility"
+                  type="button"
+                  data-fb-comment-action="visibility"
+                  data-comment-id="${escapeAttr(commentId)}"
+                  data-comment-hidden="${
+                    comment.is_hidden
+                      ? "true"
+                      : "false"
+                  }"
+                >
+                  ${
+                    comment.is_hidden
+                      ? "👁 Показати"
+                      : "🙈 Приховати"
+                  }
+                </button>
+              `
+              : "";
+
+          const deleteButton =
+            comment.can_remove
+              ? `
+                <button
+                  class="meta-ig-comment-action is-delete"
+                  type="button"
+                  data-fb-comment-action="delete"
+                  data-comment-id="${escapeAttr(commentId)}"
+                  data-comment-author="${escapeAttr(authorName)}"
+                >
+                  🗑 Видалити
+                </button>
+              `
+              : "";
+
+          const controlsHtml = commentId
+            ? `
+              <div class="meta-ig-comment-actions">
+                ${replyButton}
+                ${visibilityButton}
+                ${deleteButton}
+              </div>
+
+              <div
+                class="meta-ig-reply-form"
+                data-fb-reply-form
+                hidden
+              >
+                <textarea
+                  data-fb-reply-input
+                  rows="3"
+                  maxlength="1000"
+                  placeholder="Напишіть відповідь від Itenaischool..."
+                ></textarea>
+
+                <div class="meta-ig-reply-form__actions">
+                  <button
+                    class="meta-ig-comment-action is-cancel"
+                    type="button"
+                    data-fb-comment-action="reply-cancel"
+                    data-comment-id="${escapeAttr(commentId)}"
+                  >
+                    Скасувати
+                  </button>
+
+                  <button
+                    class="meta-ig-comment-action is-send"
+                    type="button"
+                    data-fb-comment-action="reply-send"
+                    data-comment-id="${escapeAttr(commentId)}"
+                  >
+                    Надіслати відповідь
+                  </button>
+                </div>
+              </div>
+            `
+            : "";
+
+          return `
+            <article
+              class="meta-fb-comment"
+              data-facebook-comment-id="${escapeAttr(commentId)}"
+            >
               <div class="meta-fb-comment__top">
                 <strong>
-                  ${escapeHtml(
-                    comment?.author?.name ||
-                    "Користувач Facebook"
-                  )}
+                  ${escapeHtml(authorName)}
                 </strong>
 
                 <span>
@@ -6972,14 +7154,18 @@ function renderMetaFacebookDetails({
                     : ""
                 }
               </div>
+
+              ${controlsHtml}
+              ${repliesHtml}
             </article>
-          `)
-          .join("")
-      : `
-        <div class="meta-fb-comments-empty">
-          Під цією публікацією немає коментарів.
-        </div>
-      `;
+          `;
+        })
+        .join("")
+    : `
+      <div class="meta-fb-comments-empty">
+        Під цією публікацією немає коментарів.
+      </div>
+    `;
 
   metaFacebookDetails.innerHTML = `
     <div class="meta-fb-detail__media">
@@ -9436,6 +9622,234 @@ metaFacebookPostsList?.addEventListener(
       postButton.dataset.metaFacebookPostId;
 
     loadMetaFacebookDetails(postId);
+  }
+);
+
+metaFacebookDetails?.addEventListener(
+  "click",
+  async event => {
+    const actionButton =
+      event.target.closest(
+        "[data-fb-comment-action]"
+      );
+
+    if (!actionButton) {
+      return;
+    }
+
+    const action =
+      actionButton.dataset.fbCommentAction;
+
+    const commentId =
+      actionButton.dataset.commentId || "";
+
+    const commentCard =
+      actionButton.closest(
+        "[data-facebook-comment-id]"
+      );
+
+    const page =
+      metaFacebookCurrentPage();
+
+    if (!page?.id || !commentId) {
+      alert(
+        "Не вдалося визначити сторінку або коментар."
+      );
+      return;
+    }
+
+    const replyForm =
+      commentCard?.querySelector(
+        "[data-fb-reply-form]"
+      );
+
+    const replyInput =
+      commentCard?.querySelector(
+        "[data-fb-reply-input]"
+      );
+
+    if (action === "reply-open") {
+      if (replyForm) {
+        replyForm.hidden = false;
+      }
+
+      replyInput?.focus();
+      return;
+    }
+
+    if (action === "reply-cancel") {
+      if (replyForm) {
+        replyForm.hidden = true;
+      }
+
+      if (replyInput) {
+        replyInput.value = "";
+      }
+
+      return;
+    }
+
+    if (action === "reply-send") {
+      const message =
+        replyInput?.value.trim() || "";
+
+      if (!message) {
+        alert("Напишіть текст відповіді.");
+        replyInput?.focus();
+        return;
+      }
+
+      const oldText =
+        actionButton.textContent;
+
+      actionButton.disabled = true;
+      actionButton.textContent =
+        "Надсилаємо...";
+
+      try {
+        await metaFacebookCommentAction(
+          "/api/meta/facebook/comments/reply",
+          "POST",
+          {
+            page_id: String(page.id),
+            comment_id: commentId,
+            message
+          }
+        );
+
+        metaPagesStatus.textContent =
+          "Відповідь успішно опублікована.";
+
+        await loadMetaFacebookDetails(
+          metaFacebookSelectedPostId
+        );
+
+      } catch (error) {
+        console.error(
+          "Facebook reply error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Не вдалося надіслати відповідь."
+        );
+
+        actionButton.disabled = false;
+        actionButton.textContent = oldText;
+      }
+
+      return;
+    }
+
+    if (action === "visibility") {
+      const currentlyHidden =
+        actionButton.dataset.commentHidden ===
+        "true";
+
+      const newHiddenValue =
+        !currentlyHidden;
+
+      const oldText =
+        actionButton.textContent;
+
+      actionButton.disabled = true;
+      actionButton.textContent =
+        newHiddenValue
+          ? "Приховуємо..."
+          : "Показуємо...";
+
+      try {
+        await metaFacebookCommentAction(
+          "/api/meta/facebook/comments/visibility",
+          "POST",
+          {
+            page_id: String(page.id),
+            comment_id: commentId,
+            hidden: newHiddenValue
+          }
+        );
+
+        metaPagesStatus.textContent =
+          newHiddenValue
+            ? "Коментар приховано."
+            : "Коментар знову показується.";
+
+        await loadMetaFacebookDetails(
+          metaFacebookSelectedPostId
+        );
+
+      } catch (error) {
+        console.error(
+          "Facebook visibility error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Не вдалося змінити видимість."
+        );
+
+        actionButton.disabled = false;
+        actionButton.textContent = oldText;
+      }
+
+      return;
+    }
+
+    if (action === "delete") {
+      const author =
+        actionButton.dataset.commentAuthor ||
+        "користувача";
+
+      const confirmed = confirm(
+        `Видалити коментар від ${author}?\n\n` +
+        "Цю дію неможливо скасувати."
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const oldText =
+        actionButton.textContent;
+
+      actionButton.disabled = true;
+      actionButton.textContent =
+        "Видаляємо...";
+
+      try {
+        await metaFacebookCommentAction(
+          "/api/meta/facebook/comments",
+          "DELETE",
+          {
+            page_id: String(page.id),
+            comment_id: commentId
+          }
+        );
+
+        metaPagesStatus.textContent =
+          "Facebook-коментар видалено.";
+
+        await loadMetaFacebookDetails(
+          metaFacebookSelectedPostId
+        );
+
+      } catch (error) {
+        console.error(
+          "Facebook delete error:",
+          error
+        );
+
+        alert(
+          error.message ||
+          "Не вдалося видалити коментар."
+        );
+
+        actionButton.disabled = false;
+        actionButton.textContent = oldText;
+      }
+    }
   }
 );
 
