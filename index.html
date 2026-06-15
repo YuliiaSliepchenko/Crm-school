@@ -977,25 +977,100 @@
 
       <main class="gws-content">
         <section class="gws-panel is-active" data-meta-panel="pages">
-          <div class="gws-panel__head">
-            <div>
-              <h3>Facebook Pages</h3>
-              <p>Список сторінок, доступних через підключений Meta акаунт.</p>
-            </div>
+  <div class="gws-panel__head">
+    <div>
+      <h3>Facebook Pages</h3>
+      <p>
+        Публікації, Reels, статистика та коментарі
+        Facebook-сторінки.
+      </p>
+    </div>
 
-            <div class="gws-actions-row">
-              <button id="metaRefreshPagesBtn" class="btn btn-primary" type="button">
-                🔄 Оновити сторінки
-              </button>
-            </div>
-          </div>
+    <div class="gws-actions-row">
+      <button
+        id="metaRefreshPagesBtn"
+        class="btn btn-primary"
+        type="button"
+      >
+        🔄 Оновити Facebook
+      </button>
+    </div>
+  </div>
 
-          <div id="metaPagesStatus" class="gws-status-line">
-            Натисніть “Оновити сторінки”, щоб підтягнути Facebook Pages.
-          </div>
+  <div class="meta-fb-toolbar">
+    <label class="meta-ads-field">
+      <span>Facebook-сторінка</span>
 
-          <div id="metaPagesList" class="gws-files-grid"></div>
-        </section>
+      <select id="metaFacebookPageSelect">
+        <option value="">
+          Оберіть Facebook-сторінку
+        </option>
+      </select>
+    </label>
+  </div>
+
+  <div id="metaPagesStatus" class="gws-status-line">
+    Відкрийте вкладку або натисніть «Оновити Facebook».
+  </div>
+
+  <div
+    id="metaPagesList"
+    class="meta-fb-page-summary"
+  ></div>
+
+  <div class="meta-fb-layout">
+    <section class="meta-fb-column">
+      <div class="meta-fb-section-head">
+        <div>
+          <h4>Публікації та Reels</h4>
+          <p>
+            Натисніть на публікацію, щоб переглянути
+            статистику й коментарі.
+          </p>
+        </div>
+      </div>
+
+      <div
+        id="metaFacebookPostsList"
+        class="meta-fb-posts-list"
+      >
+        <div class="meta-ads-empty">
+          Публікації ще не завантажені.
+        </div>
+      </div>
+
+      <button
+        id="metaFacebookLoadMoreBtn"
+        class="btn btn-ghost meta-fb-load-more"
+        type="button"
+        hidden
+      >
+        Завантажити ще публікації
+      </button>
+    </section>
+
+    <section class="meta-fb-column">
+      <div class="meta-fb-section-head">
+        <div>
+          <h4>Статистика та коментарі</h4>
+          <p>
+            Охоплення, перегляди, реакції, поширення
+            та коментарі.
+          </p>
+        </div>
+      </div>
+
+      <div
+        id="metaFacebookDetails"
+        class="meta-fb-details"
+      >
+        <div class="meta-ads-empty">
+          Оберіть публікацію або Reel ліворуч.
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
 
         <section class="gws-panel" data-meta-panel="leads">
   <div class="gws-panel__head">

@@ -6102,9 +6102,26 @@ const metaLoginBtn = document.getElementById("metaLoginBtn");
 const metaTabs = document.querySelectorAll("[data-meta-tab]");
 const metaPanels = document.querySelectorAll("[data-meta-panel]");
 
-const metaRefreshPagesBtn = document.getElementById("metaRefreshPagesBtn");
-const metaPagesStatus = document.getElementById("metaPagesStatus");
-const metaPagesList = document.getElementById("metaPagesList");
+const metaRefreshPagesBtn =
+  document.getElementById("metaRefreshPagesBtn");
+
+const metaPagesStatus =
+  document.getElementById("metaPagesStatus");
+
+const metaPagesList =
+  document.getElementById("metaPagesList");
+
+const metaFacebookPageSelect =
+  document.getElementById("metaFacebookPageSelect");
+
+const metaFacebookPostsList =
+  document.getElementById("metaFacebookPostsList");
+
+const metaFacebookDetails =
+  document.getElementById("metaFacebookDetails");
+
+const metaFacebookLoadMoreBtn =
+  document.getElementById("metaFacebookLoadMoreBtn");
 
 const metaRefreshAdsBtn = document.getElementById("metaRefreshAdsBtn");
 const metaAdAccountSelect = document.getElementById("metaAdAccountSelect");
@@ -6146,6 +6163,17 @@ const metaInstagramLoadMoreBtn =
 
 const metaSettingsBox =
   document.getElementById("metaSettingsBox");
+
+let metaFacebookPages = [];
+let metaFacebookPosts = [];
+
+let metaFacebookSelectedPostId = "";
+let metaFacebookAfter = "";
+let metaFacebookHasMore = false;
+
+let metaFacebookPagesLoading = false;
+let metaFacebookPostsLoading = false;
+let metaFacebookDetailsLoading = false;
 
 let metaAdsAccounts = [];
 let metaAdsCampaigns = [];
@@ -6327,56 +6355,1143 @@ function setMetaHubTab(tabName) {
   }
 }
 
-async function loadMetaPages() {
-  if (!metaPagesStatus || !metaPagesList) return;
+function metaFacebookCurrentPage() {
+  const pageId =
+    metaFacebookPageSelect?.value || "";
 
-  metaPagesStatus.textContent = "Завантажуємо Facebook Pages...";
-  metaPagesList.innerHTML = "";
+  return (
+    metaFacebookPages.find(
+      page => String(page.id) === String(pageId)
+    ) || null
+  );
+}
+
+
+function metaFacebookCurrentPost() {
+  return (
+    metaFacebookPosts.find(
+      post =>
+        String(post.id) ===
+        String(metaFacebookSelectedPostId)
+    ) || null
+  );
+}
+
+
+function metaFacebookFormatDate(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+
+function metaFacebookPostImage(post) {
+  return post?.full_picture || "";
+}
+
+
+function metaFacebookVideoId(post) {
+  const url = String(
+    post?.permalink_url || ""
+  );
+
+  const reelMatch =
+    url.match(/\/reel\/(\d+)/i);
+
+  if (reelMatch?.[1]) {
+    return reelMatch[1];
+  }
+
+  const videoMatch =
+    url.match(/\/videos\/(\d+)/i);
+
+  if (videoMatch?.[1]) {
+    return videoMatch[1];
+  }
+
+  return "";
+}
+
+
+function metaFacebookIsReel(post) {
+  return Boolean(
+    String(post?.permalink_url || "")
+      .includes("/reel/")
+  );
+}
+
+
+function metaFacebookTypeLabel(post) {
+  if (metaFacebookIsReel(post)) {
+    return "Reel";
+  }
+
+  const statusType = String(
+    post?.status_type || ""
+  ).toLowerCase();
+
+  if (statusType === "added_video") {
+    return "Відео";
+  }
+
+  if (statusType === "added_photos") {
+    return "Фото";
+  }
+
+  if (statusType === "shared_story") {
+    return "Поширення";
+  }
+
+  if (post?.full_picture) {
+    return "Публікація з фото";
+  }
+
+  return "Публікація";
+}
+
+
+function metaFacebookPostTitle(post) {
+  const text = String(
+    post?.message ||
+    post?.story ||
+    ""
+  ).trim();
+
+  if (!text) {
+    return metaFacebookTypeLabel(post);
+  }
+
+  return text.length > 95
+    ? `${text.slice(0, 95)}…`
+    : text;
+}
+
+
+function metaFacebookNumericValue(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "—";
+  }
+
+  return metaFormatNumber(value);
+}
+
+
+function metaFacebookObjectTotal(value) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return 0;
+  }
+
+  return Object.values(value)
+    .reduce((sum, item) => {
+      const number = Number(item);
+      return sum + (
+        Number.isFinite(number)
+          ? number
+          : 0
+      );
+    }, 0);
+}
+
+
+function metaFacebookTimeFromMs(value) {
+  const milliseconds = Number(value);
+
+  if (!Number.isFinite(milliseconds)) {
+    return "—";
+  }
+
+  const totalSeconds =
+    Math.max(0, Math.round(milliseconds / 1000));
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds} с`;
+  }
+
+  const minutes =
+    Math.floor(totalSeconds / 60);
+
+  const seconds =
+    totalSeconds % 60;
+
+  return `${minutes} хв ${seconds} с`;
+}
+
+
+function metaFacebookInsightValue(
+  insights,
+  metricName
+) {
+  const metric = insights?.[metricName];
+
+  if (!metric) {
+    return null;
+  }
+
+  return metric.value;
+}
+
+
+async function metaFacebookRequest(url) {
+  const response = await fetch(url);
+
+  let data;
 
   try {
-    const res = await fetch(`${META_BACKEND_URL}/api/meta/pages?t=${Date.now()}`);
-    const data = await res.json();
+    data = await response.json();
+  } catch (error) {
+    throw new Error(
+      "Railway повернув некоректну відповідь."
+    );
+  }
 
-    if (!data.success) {
-      metaPagesStatus.textContent = data.error || "Не вдалося отримати Facebook Pages.";
-      return;
-    }
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data.error ||
+      "Не вдалося отримати Facebook-дані."
+    );
+  }
 
-    const pages = data.pages || [];
+  return data;
+}
 
-    if (!pages.length) {
-      metaPagesStatus.textContent = "Сторінок не знайдено. Перевірте, чи цей Facebook акаунт має доступ до бізнес-сторінок.";
-      return;
-    }
 
-    metaPagesStatus.textContent = `Знайдено сторінок: ${pages.length}`;
+function renderMetaFacebookPage() {
+  if (!metaPagesList) {
+    return;
+  }
 
-    metaPagesList.innerHTML = pages.map(page => {
-      const tasks = Array.isArray(page.tasks) ? page.tasks.join(", ") : "";
+  const page = metaFacebookCurrentPage();
 
-      return `
-        <div class="gws-file-card meta-page-card">
-          <div class="gws-file-card__top">
-            <div class="gws-file-card__icon">📘</div>
-            <div>
-              <h4>${escapeHtml(page.name || "Facebook Page")}</h4>
-              <p>${escapeHtml(page.category || "Сторінка")}</p>
-              <p>${escapeHtml(tasks || "Доступи Meta")}</p>
+  if (!page) {
+    metaPagesList.innerHTML = `
+      <div class="meta-ads-empty">
+        Facebook-сторінку не вибрано.
+      </div>
+    `;
+    return;
+  }
+
+  const tasks = Array.isArray(page.tasks)
+    ? page.tasks
+    : [];
+
+  metaPagesList.innerHTML = `
+    <div class="meta-fb-page-card">
+      <div class="meta-fb-page-card__icon">
+        📘
+      </div>
+
+      <div class="meta-fb-page-card__main">
+        <strong>
+          ${escapeHtml(
+            page.name || "Facebook Page"
+          )}
+        </strong>
+
+        <span>
+          ${escapeHtml(
+            page.category || "Сторінка"
+          )}
+        </span>
+
+        <small>
+          ID: ${escapeHtml(page.id || "—")}
+        </small>
+      </div>
+
+      <div class="meta-fb-page-card__tasks">
+        ${
+          tasks.length
+            ? tasks
+                .map(task => `
+                  <span>
+                    ${escapeHtml(task)}
+                  </span>
+                `)
+                .join("")
+            : `
+              <span>
+                Доступ отримано
+              </span>
+            `
+        }
+      </div>
+    </div>
+  `;
+}
+
+
+function renderMetaFacebookPosts() {
+  if (!metaFacebookPostsList) {
+    return;
+  }
+
+  if (!metaFacebookPosts.length) {
+    metaFacebookPostsList.innerHTML = `
+      <div class="meta-ads-empty">
+        Публікацій не знайдено.
+      </div>
+    `;
+    return;
+  }
+
+  metaFacebookPostsList.innerHTML =
+    metaFacebookPosts
+      .map(post => {
+        const image =
+          metaFacebookPostImage(post);
+
+        const isActive =
+          String(post.id) ===
+          String(metaFacebookSelectedPostId);
+
+        return `
+          <button
+            class="meta-fb-post-card${
+              isActive ? " is-active" : ""
+            }"
+            type="button"
+            data-meta-facebook-post-id="${escapeAttr(
+              post.id || ""
+            )}"
+          >
+            <div class="meta-fb-post-card__media">
+              ${
+                image
+                  ? `
+                    <img
+                      src="${escapeAttr(image)}"
+                      alt=""
+                      loading="lazy"
+                    >
+                  `
+                  : `
+                    <div class="meta-fb-post-card__placeholder">
+                      📘
+                    </div>
+                  `
+              }
+
+              <span class="meta-fb-post-card__type">
+                ${escapeHtml(
+                  metaFacebookTypeLabel(post)
+                )}
+              </span>
             </div>
-          </div>
 
-          <div class="gws-file-card__actions">
-            <button class="gws-file-link" type="button" disabled>
-              ✅ Доступ отримано
-            </button>
-          </div>
+            <div class="meta-fb-post-card__body">
+              <strong>
+                ${escapeHtml(
+                  metaFacebookPostTitle(post)
+                )}
+              </strong>
+
+              <span>
+                ${escapeHtml(
+                  metaFacebookFormatDate(
+                    post.created_time
+                  )
+                )}
+              </span>
+
+              <div class="meta-fb-post-card__counters">
+                <small>
+                  👍 ${metaFacebookNumericValue(
+                    post.reactions_count || 0
+                  )}
+                </small>
+
+                <small>
+                  💬 ${metaFacebookNumericValue(
+                    post.comments_count || 0
+                  )}
+                </small>
+
+                <small>
+                  ↗ ${metaFacebookNumericValue(
+                    post.shares_count || 0
+                  )}
+                </small>
+              </div>
+            </div>
+          </button>
+        `;
+      })
+      .join("");
+}
+
+
+function renderMetaFacebookDetails({
+  post,
+  insightsData,
+  commentsData,
+  insightsError = ""
+}) {
+  if (!metaFacebookDetails || !post) {
+    return;
+  }
+
+  const image =
+    metaFacebookPostImage(post);
+
+  const insights =
+    insightsData?.insights || {};
+
+  const isVideo =
+    Boolean(metaFacebookVideoId(post));
+
+  let cards = [];
+
+  if (isVideo) {
+    const reactions =
+      metaFacebookObjectTotal(
+        metaFacebookInsightValue(
+          insights,
+          "post_video_likes_by_reaction_type"
+        )
+      );
+
+    const socialActions =
+      metaFacebookInsightValue(
+        insights,
+        "post_video_social_actions"
+      ) || {};
+
+    cards = [
+      {
+        label: "Охоплення",
+        value: metaFacebookInsightValue(
+          insights,
+          "post_impressions_unique"
+        )
+      },
+      {
+        label: "Відтворення",
+        value:
+          metaFacebookInsightValue(
+            insights,
+            "fb_reels_total_plays"
+          ) ??
+          metaFacebookInsightValue(
+            insights,
+            "blue_reels_play_count"
+          )
+      },
+      {
+        label: "Первинні запуски",
+        value: metaFacebookInsightValue(
+          insights,
+          "blue_reels_play_count"
+        )
+      },
+      {
+        label: "Повторні перегляди",
+        value: metaFacebookInsightValue(
+          insights,
+          "fb_reels_replay_count"
+        )
+      },
+      {
+        label: "Реакції",
+        value: reactions
+      },
+      {
+        label: "Поширення",
+        value:
+          socialActions.SHARE ??
+          socialActions.share ??
+          0
+      },
+      {
+        label: "Середній перегляд",
+        value: metaFacebookTimeFromMs(
+          metaFacebookInsightValue(
+            insights,
+            "post_video_avg_time_watched"
+          )
+        ),
+        formatted: true
+      },
+      {
+        label: "Час перегляду",
+        value: metaFacebookTimeFromMs(
+          metaFacebookInsightValue(
+            insights,
+            "post_video_view_time"
+          )
+        ),
+        formatted: true
+      },
+      {
+        label: "Нові підписники",
+        value: metaFacebookInsightValue(
+          insights,
+          "post_video_followers"
+        )
+      }
+    ];
+  } else {
+    const postInfo =
+      insightsData?.post || post;
+
+    const knownCards = [
+      {
+        label: "Реакції",
+        value:
+          postInfo?.reactions_count ??
+          post?.reactions_count ??
+          0
+      },
+      {
+        label: "Коментарі",
+        value:
+          postInfo?.comments_count ??
+          post?.comments_count ??
+          0
+      },
+      {
+        label: "Поширення",
+        value:
+          postInfo?.shares_count ??
+          post?.shares_count ??
+          0
+      },
+      {
+        label: "Охоплення",
+        value:
+          metaFacebookInsightValue(
+            insights,
+            "post_impressions_unique"
+          )
+      },
+      {
+        label: "Покази",
+        value:
+          metaFacebookInsightValue(
+            insights,
+            "post_impressions"
+          )
+      },
+      {
+        label: "Залучені користувачі",
+        value:
+          metaFacebookInsightValue(
+            insights,
+            "post_engaged_users"
+          )
+      },
+      {
+        label: "Кліки",
+        value:
+          metaFacebookInsightValue(
+            insights,
+            "post_clicks"
+          )
+      }
+    ];
+
+    cards = knownCards;
+  }
+
+  cards = cards.filter(card =>
+    card.value !== null &&
+    card.value !== undefined
+  );
+
+  const comments =
+    commentsData?.comments || [];
+
+  const commentsHtml =
+    comments.length
+      ? comments
+          .map(comment => `
+            <article class="meta-fb-comment">
+              <div class="meta-fb-comment__top">
+                <strong>
+                  ${escapeHtml(
+                    comment?.author?.name ||
+                    "Користувач Facebook"
+                  )}
+                </strong>
+
+                <span>
+                  ${escapeHtml(
+                    metaFacebookFormatDate(
+                      comment.created_time
+                    )
+                  )}
+                </span>
+              </div>
+
+              <div class="meta-fb-comment__text">
+                ${escapeHtml(
+                  comment.message || "—"
+                )}
+              </div>
+
+              <div class="meta-fb-comment__bottom">
+                <span>
+                  👍 ${metaFacebookNumericValue(
+                    comment.like_count || 0
+                  )}
+                </span>
+
+                ${
+                  comment.is_hidden
+                    ? `
+                      <span class="meta-fb-hidden-badge">
+                        Приховано
+                      </span>
+                    `
+                    : ""
+                }
+              </div>
+            </article>
+          `)
+          .join("")
+      : `
+        <div class="meta-fb-comments-empty">
+          Під цією публікацією немає коментарів.
         </div>
       `;
-    }).join("");
-  } catch (err) {
-    console.error("Meta pages error:", err);
-    metaPagesStatus.textContent = "Помилка завантаження Facebook Pages.";
+
+  metaFacebookDetails.innerHTML = `
+    <div class="meta-fb-detail__media">
+      ${
+        image
+          ? `
+            <img
+              src="${escapeAttr(image)}"
+              alt=""
+              loading="lazy"
+            >
+          `
+          : `
+            <div class="meta-fb-detail__placeholder">
+              📘
+            </div>
+          `
+      }
+    </div>
+
+    <div class="meta-fb-detail__head">
+      <div>
+        <h4>
+          ${escapeHtml(
+            metaFacebookTypeLabel(post)
+          )}
+        </h4>
+
+        <p>
+          ${escapeHtml(
+            metaFacebookFormatDate(
+              post.created_time
+            )
+          )}
+        </p>
+      </div>
+
+      ${
+        post.permalink_url
+          ? `
+            <a
+              class="meta-fb-open-link"
+              href="${escapeAttr(
+                post.permalink_url
+              )}"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Відкрити у Facebook ↗
+            </a>
+          `
+          : ""
+      }
+    </div>
+
+    <div class="meta-fb-caption">
+      ${escapeHtml(
+        post.message ||
+        post.story ||
+        "Текст відсутній."
+      )}
+    </div>
+
+    ${
+      insightsError
+        ? `
+          <div class="meta-fb-warning">
+            Частина статистики недоступна:
+            ${escapeHtml(insightsError)}
+          </div>
+        `
+        : ""
+    }
+
+    <div class="meta-fb-stats-grid">
+      ${
+        cards.length
+          ? cards
+              .map(card => `
+                <div class="meta-fb-stat-card">
+                  <span>
+                    ${escapeHtml(card.label)}
+                  </span>
+
+                  <strong>
+                    ${
+                      card.formatted
+                        ? escapeHtml(card.value)
+                        : escapeHtml(
+                            metaFacebookNumericValue(
+                              card.value
+                            )
+                          )
+                    }
+                  </strong>
+                </div>
+              `)
+              .join("")
+          : `
+            <div class="meta-fb-comments-empty">
+              Статистика для цієї публікації
+              не повернулася.
+            </div>
+          `
+      }
+    </div>
+
+    <div class="meta-fb-comments-head">
+      <div>
+        <h4>Коментарі</h4>
+        <p>
+          Коментарі під вибраною публікацією.
+        </p>
+      </div>
+
+      <span class="meta-fb-comments-count">
+        ${comments.length}
+      </span>
+    </div>
+
+    <div class="meta-fb-comments-list">
+      ${commentsHtml}
+    </div>
+  `;
+}
+
+
+async function loadMetaPages() {
+  if (
+    metaFacebookPagesLoading ||
+    !metaPagesStatus ||
+    !metaFacebookPageSelect
+  ) {
+    return;
   }
+
+  metaFacebookPagesLoading = true;
+  metaRefreshPagesBtn.disabled = true;
+
+  metaPagesStatus.textContent =
+    "Завантажуємо Facebook Pages...";
+
+  const previousPageId =
+    metaFacebookPageSelect.value || "";
+
+  try {
+    const data = await metaFacebookRequest(
+      `${META_BACKEND_URL}` +
+      `/api/meta/pages?t=${Date.now()}`
+    );
+
+    metaFacebookPages =
+  (Array.isArray(data.pages) ? data.pages : [])
+    .map(page => {
+      let tasks = page.tasks || [];
+
+      if (typeof tasks === "string") {
+        try {
+          const parsedTasks = JSON.parse(tasks);
+
+          tasks = Array.isArray(parsedTasks)
+            ? parsedTasks
+            : tasks.split(",");
+        } catch (error) {
+          tasks = tasks.split(",");
+        }
+      }
+
+      return {
+        ...page,
+
+        id: String(
+          page.id ||
+          page.page_id ||
+          page.facebook_page_id ||
+          ""
+        ),
+
+        name:
+          page.name ||
+          page.page_name ||
+          "Facebook Page",
+
+        category:
+          page.category ||
+          page.page_category ||
+          "Сторінка",
+
+        tasks: Array.isArray(tasks)
+          ? tasks
+              .map(task => String(task).trim())
+              .filter(Boolean)
+          : []
+      };
+    })
+    .filter(page => page.id);
+
+    if (!metaFacebookPages.length) {
+      metaPagesStatus.textContent =
+        "Facebook-сторінок не знайдено.";
+
+      metaFacebookPageSelect.innerHTML = `
+        <option value="">
+          Сторінок не знайдено
+        </option>
+      `;
+
+      metaPagesList.innerHTML = `
+        <div class="meta-ads-empty">
+          Перевірте доступ Facebook-акаунта
+          до бізнес-сторінки.
+        </div>
+      `;
+
+      return;
+    }
+
+    metaFacebookPageSelect.innerHTML =
+      metaFacebookPages
+        .map(page => `
+          <option value="${escapeAttr(
+            page.id || ""
+          )}">
+            ${escapeHtml(
+              page.name || "Facebook Page"
+            )}
+          </option>
+        `)
+        .join("");
+
+    const previousExists =
+      metaFacebookPages.some(
+        page =>
+          String(page.id) ===
+          String(previousPageId)
+      );
+
+    if (previousExists) {
+  metaFacebookPageSelect.value =
+    previousPageId;
+} else {
+  metaFacebookPageSelect.value =
+    metaFacebookPages[0].id;
+}
+
+    metaPagesStatus.textContent =
+      `Знайдено сторінок: ` +
+      `${metaFacebookPages.length}`;
+
+    renderMetaFacebookPage();
+
+    metaFacebookPosts = [];
+    metaFacebookSelectedPostId = "";
+    metaFacebookAfter = "";
+    metaFacebookHasMore = false;
+
+    await loadMetaFacebookPosts({
+      append: false
+    });
+
+  } catch (error) {
+    console.error(
+      "Meta Facebook Pages error:",
+      error
+    );
+
+    metaPagesStatus.textContent =
+      error.message ||
+      "Помилка завантаження Facebook Pages.";
+
+  } finally {
+    metaFacebookPagesLoading = false;
+    metaRefreshPagesBtn.disabled = false;
+  }
+}
+
+
+async function loadMetaFacebookPosts({
+  append = false
+} = {}) {
+  if (
+    metaFacebookPostsLoading ||
+    !metaFacebookPostsList
+  ) {
+    return;
+  }
+
+  const page = metaFacebookCurrentPage();
+
+  if (!page?.id) {
+    metaFacebookPostsList.innerHTML = `
+      <div class="meta-ads-empty">
+        Спочатку оберіть Facebook-сторінку.
+      </div>
+    `;
+    return;
+  }
+
+  metaFacebookPostsLoading = true;
+
+  if (!append) {
+    metaFacebookPostsList.innerHTML = `
+      <div class="meta-ads-loading">
+        Завантажуємо публікації Facebook...
+      </div>
+    `;
+  }
+
+  metaFacebookLoadMoreBtn.disabled = true;
+
+  try {
+    let url =
+      `${META_BACKEND_URL}` +
+      `/api/meta/facebook/posts` +
+      `?page_id=${encodeURIComponent(page.id)}` +
+      `&limit=25` +
+      `&t=${Date.now()}`;
+
+    if (append && metaFacebookAfter) {
+      url +=
+        `&after=${encodeURIComponent(
+          metaFacebookAfter
+        )}`;
+    }
+
+    const data =
+      await metaFacebookRequest(url);
+
+    const incomingPosts =
+      Array.isArray(data.posts)
+        ? data.posts
+        : [];
+
+    if (append) {
+      const existingIds =
+        new Set(
+          metaFacebookPosts.map(
+            post => String(post.id)
+          )
+        );
+
+      metaFacebookPosts.push(
+        ...incomingPosts.filter(
+          post =>
+            !existingIds.has(
+              String(post.id)
+            )
+        )
+      );
+    } else {
+      metaFacebookPosts =
+        incomingPosts;
+    }
+
+    metaFacebookAfter =
+      data?.paging?.cursors?.after || "";
+
+    metaFacebookHasMore =
+      Boolean(metaFacebookAfter);
+
+    if (
+      !metaFacebookSelectedPostId &&
+      metaFacebookPosts.length
+    ) {
+      metaFacebookSelectedPostId =
+        metaFacebookPosts[0].id;
+    }
+
+    renderMetaFacebookPosts();
+
+    metaFacebookLoadMoreBtn.hidden =
+      !metaFacebookHasMore;
+
+    if (
+      !append &&
+      metaFacebookSelectedPostId
+    ) {
+      await loadMetaFacebookDetails(
+        metaFacebookSelectedPostId
+      );
+    }
+
+    metaPagesStatus.textContent =
+      `Завантажено публікацій: ` +
+      `${metaFacebookPosts.length}`;
+
+  } catch (error) {
+    console.error(
+      "Meta Facebook posts error:",
+      error
+    );
+
+    if (!append) {
+      metaFacebookPostsList.innerHTML = `
+        <div class="meta-ads-error">
+          ${escapeHtml(
+            error.message ||
+            "Не вдалося завантажити публікації."
+          )}
+        </div>
+      `;
+    }
+
+  } finally {
+    metaFacebookPostsLoading = false;
+    metaFacebookLoadMoreBtn.disabled = false;
+  }
+}
+
+
+async function loadMetaFacebookDetails(postId) {
+  if (
+    metaFacebookDetailsLoading ||
+    !metaFacebookDetails
+  ) {
+    return;
+  }
+
+  const page = metaFacebookCurrentPage();
+
+  const post =
+    metaFacebookPosts.find(
+      item =>
+        String(item.id) ===
+        String(postId)
+    );
+
+  if (!page?.id || !post) {
+    return;
+  }
+
+  metaFacebookSelectedPostId = post.id;
+  renderMetaFacebookPosts();
+
+  metaFacebookDetailsLoading = true;
+
+  metaFacebookDetails.innerHTML = `
+    <div class="meta-ads-loading">
+      Завантажуємо статистику та коментарі...
+    </div>
+  `;
+
+  const videoId =
+    metaFacebookVideoId(post);
+
+  const commentsTargetId =
+    videoId || post.id;
+
+  const insightsUrl =
+    videoId
+      ? (
+        `${META_BACKEND_URL}` +
+        `/api/meta/facebook/video/insights` +
+        `?page_id=${encodeURIComponent(page.id)}` +
+        `&video_id=${encodeURIComponent(videoId)}` +
+        `&t=${Date.now()}`
+      )
+      : (
+        `${META_BACKEND_URL}` +
+        `/api/meta/facebook/post/insights` +
+        `?page_id=${encodeURIComponent(page.id)}` +
+        `&post_id=${encodeURIComponent(post.id)}` +
+        `&t=${Date.now()}`
+      );
+
+  const commentsUrl =
+    `${META_BACKEND_URL}` +
+    `/api/meta/facebook/comments` +
+    `?page_id=${encodeURIComponent(page.id)}` +
+    `&post_id=${encodeURIComponent(
+      commentsTargetId
+    )}` +
+    `&limit=50` +
+    `&t=${Date.now()}`;
+
+  const [
+    insightsResult,
+    commentsResult
+  ] = await Promise.allSettled([
+    metaFacebookRequest(insightsUrl),
+    metaFacebookRequest(commentsUrl)
+  ]);
+
+  const insightsData =
+    insightsResult.status === "fulfilled"
+      ? insightsResult.value
+      : null;
+
+  const commentsData =
+    commentsResult.status === "fulfilled"
+      ? commentsResult.value
+      : {
+        comments: []
+      };
+
+  const insightsError =
+    insightsResult.status === "rejected"
+      ? insightsResult.reason?.message ||
+        "Статистика недоступна."
+      : (
+        insightsData?.insights_error?.message ||
+        ""
+      );
+
+  renderMetaFacebookDetails({
+    post,
+    insightsData,
+    commentsData,
+    insightsError
+  });
+
+  metaFacebookDetailsLoading = false;
 }
 
 function metaFormatNumber(value, digits = 0) {
@@ -8269,6 +9384,60 @@ metaTabs.forEach(tab => {
 });
 
 metaRefreshPagesBtn?.addEventListener("click", loadMetaPages);
+
+metaFacebookPageSelect?.addEventListener(
+  "change",
+  async () => {
+    metaFacebookPosts = [];
+    metaFacebookSelectedPostId = "";
+    metaFacebookAfter = "";
+    metaFacebookHasMore = false;
+
+    renderMetaFacebookPage();
+
+    if (metaFacebookDetails) {
+      metaFacebookDetails.innerHTML = `
+        <div class="meta-ads-empty">
+          Завантажуємо публікації сторінки...
+        </div>
+      `;
+    }
+
+    await loadMetaFacebookPosts({
+      append: false
+    });
+  }
+);
+
+
+metaFacebookLoadMoreBtn?.addEventListener(
+  "click",
+  () => {
+    loadMetaFacebookPosts({
+      append: true
+    });
+  }
+);
+
+
+metaFacebookPostsList?.addEventListener(
+  "click",
+  event => {
+    const postButton =
+      event.target.closest(
+        "[data-meta-facebook-post-id]"
+      );
+
+    if (!postButton) {
+      return;
+    }
+
+    const postId =
+      postButton.dataset.metaFacebookPostId;
+
+    loadMetaFacebookDetails(postId);
+  }
+);
 
 metaRefreshAdsBtn?.addEventListener(
   "click",
