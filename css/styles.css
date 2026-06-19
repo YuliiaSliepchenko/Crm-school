@@ -6125,7 +6125,7 @@ body.gws-lock .gws-hub *{
   font-weight:700;
   line-height:1.48;
   overflow-wrap:anywhere;
-  white-space:pre-wrap;
+  white-space:pre-line;
 }
 
 .meta-direct-bubble__meta{
@@ -6560,4 +6560,69 @@ body.gws-lock .gws-hub *{
   .meta-direct-upload-preview{
     grid-column:1 / -1;
   }
+}
+
+/* =========================================================
+   META DIRECT — COMPACT SPACING FIX
+   ========================================================= */
+
+.meta-direct-messages{
+  padding:12px 16px 10px !important;
+  scroll-padding-bottom:10px;
+}
+
+.meta-direct-day{
+  margin:3px auto 9px;
+  padding:4px 9px;
+}
+
+.meta-direct-message-row{
+  margin:2px 0;
+}
+
+/* Трохи більше повітря лише коли змінюється сторона */
+.meta-direct-message-row.is-in
++ .meta-direct-message-row.is-out,
+.meta-direct-message-row.is-out
++ .meta-direct-message-row.is-in{
+  margin-top:8px;
+}
+
+/* Компактніші повідомлення */
+.meta-direct-bubble{
+  padding:8px 11px 6px;
+}
+
+.meta-direct-bubble__meta{
+  margin-top:3px;
+}
+
+.meta-direct-attachment{
+  margin-bottom:5px;
+}
+
+/* Компактніше нижнє поле введення */
+.meta-direct-composer{
+  gap:6px;
+  padding:6px 8px;
+}
+
+.meta-direct-composer textarea{
+  min-height:42px;
+  height:42px;
+  padding:10px 12px;
+}
+
+.meta-direct-composer
+.meta-direct-attach-btn{
+  width:42px;
+  min-width:42px;
+  height:42px;
+  min-height:42px;
+}
+
+#metaDirectSendBtn{
+  height:42px;
+  min-height:42px;
+  padding:8px 14px;
 }
