@@ -6353,6 +6353,10 @@ function setMetaHubTab(tabName) {
   if (tabName === "instagram") {
     loadMetaInstagramDashboard();
   }
+
+  if (tabName === "direct") {
+    initMetaDirect();
+  }
 }
 
 function metaFacebookCurrentPage() {
@@ -10199,5 +10203,1531 @@ setTimeout(() => {
 }, 400);
 
 refreshMetaStatus();
+
+/* =========================================================
+   META DIRECT / MESSENGER
+   ========================================================= */
+
+const metaDirectPanel =
+  document.querySelector('[data-meta-panel="direct"]');
+
+const metaDirectRefreshBtn =
+  document.getElementById("metaDirectRefreshBtn");
+
+const metaDirectPageSelect =
+  document.getElementById("metaDirectPageSelect");
+
+const metaDirectStatus =
+  document.getElementById("metaDirectStatus");
+
+const metaDirectConversationCount =
+  document.getElementById(
+    "metaDirectConversationCount"
+  );
+
+const metaDirectConversations =
+  document.getElementById(
+    "metaDirectConversations"
+  );
+
+const metaDirectChatHeader =
+  document.getElementById(
+    "metaDirectChatHeader"
+  );
+
+const metaDirectMessages =
+  document.getElementById(
+    "metaDirectMessages"
+  );
+
+const metaDirectComposer =
+  document.getElementById(
+    "metaDirectComposer"
+  );
+
+const metaDirectMessageInput =
+  document.getElementById(
+    "metaDirectMessageInput"
+  );
+
+const metaDirectSendBtn =
+  document.getElementById(
+    "metaDirectSendBtn"
+  );
+
+
+const metaDirectState = {
+  initialized: false,
+
+  pages: [],
+  conversations: [],
+  messages: [],
+
+  activeConversation: null,
+
+  conversationsLoading: false,
+  messagesLoading: false,
+  sending: false,
+
+  pollingTimer: null,
+
+  conversationsSignature: null,
+  messagesSignature: null
+};
+
+function metaDirectCreateSignature(
+  items,
+  fields
+) {
+  return JSON.stringify(
+    (items || []).map(item =>
+      fields.map(field =>
+        item?.[field] ?? null
+      )
+    )
+  );
+}
+
+
+function metaDirectEscape(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
+function metaDirectSafeUrl(value) {
+  const raw = String(value || "").trim();
+
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    const url = new URL(raw);
+
+    if (
+      url.protocol === "https:" ||
+      url.protocol === "http:"
+    ) {
+      return url.href;
+    }
+  } catch (error) {
+    return "";
+  }
+
+  return "";
+}
+
+
+function metaDirectInitials(name) {
+  const parts = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!parts.length) {
+    return "👤";
+  }
+
+  return parts
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() || "")
+    .join("");
+}
+
+
+function metaDirectTimestamp(value) {
+  const number = Number(value || 0);
+
+  if (!number) {
+    return null;
+  }
+
+  const date = new Date(number);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+
+function metaDirectTime(value) {
+  const date = metaDirectTimestamp(value);
+
+  if (!date) {
+    return "";
+  }
+
+  const today = new Date();
+
+  const isToday =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  if (isToday) {
+    return date.toLocaleTimeString("uk-UA", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  return date.toLocaleDateString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit"
+  });
+}
+
+
+function metaDirectMessageTime(value) {
+  const date = metaDirectTimestamp(value);
+
+  if (!date) {
+    return "";
+  }
+
+  return date.toLocaleTimeString("uk-UA", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+
+function metaDirectDayKey(value) {
+  const date = metaDirectTimestamp(value);
+
+  if (!date) {
+    return "";
+  }
+
+  return [
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  ].join("-");
+}
+
+
+function metaDirectDayLabel(value) {
+  const date = metaDirectTimestamp(value);
+
+  if (!date) {
+    return "";
+  }
+
+  const today = new Date();
+
+  const todayStart = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+
+  const dateStart = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  const differenceDays = Math.round(
+    (todayStart - dateStart) /
+    (1000 * 60 * 60 * 24)
+  );
+
+  if (differenceDays === 0) {
+    return "Сьогодні";
+  }
+
+  if (differenceDays === 1) {
+    return "Вчора";
+  }
+
+  return date.toLocaleDateString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    year:
+      date.getFullYear() !== today.getFullYear()
+        ? "numeric"
+        : undefined
+  });
+}
+
+
+function setMetaDirectStatus(
+  text,
+  type = ""
+) {
+  if (!metaDirectStatus) {
+    return;
+  }
+
+  metaDirectStatus.textContent = text;
+
+  metaDirectStatus.classList.remove(
+    "meta-direct-status--loading",
+    "meta-direct-status--success",
+    "meta-direct-status--error"
+  );
+
+  if (type) {
+    metaDirectStatus.classList.add(
+      `meta-direct-status--${type}`
+    );
+  }
+}
+
+
+function metaDirectIsVisible() {
+  return Boolean(
+    metaHub?.classList.contains("is-open") &&
+    metaDirectPanel?.classList.contains("is-active")
+  );
+}
+
+
+async function metaDirectRequest(
+  url,
+  options = {}
+) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...(options.body
+        ? {
+            "Content-Type": "application/json"
+          }
+        : {}),
+      ...(options.headers || {})
+    }
+  });
+
+  let data = {};
+
+  try {
+    data = await response.json();
+  } catch (error) {
+    data = {
+      success: false,
+      error: "Сервер повернув неправильну відповідь."
+    };
+  }
+
+  if (
+    !response.ok ||
+    data.success === false
+  ) {
+    throw new Error(
+      data.error ||
+      `Помилка сервера: ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+
+function normalizeMetaDirectPage(page) {
+  return {
+    id: String(
+      page?.id ||
+      page?.page_id ||
+      ""
+    ),
+
+    name:
+      page?.name ||
+      page?.page_name ||
+      "Facebook Page",
+
+    category:
+      page?.category ||
+      page?.page_category ||
+      "Сторінка"
+  };
+}
+
+
+async function loadMetaDirectPages() {
+  if (!metaDirectPageSelect) {
+    return false;
+  }
+
+  const previousPageId =
+    metaDirectPageSelect.value || "";
+
+  let pages = [];
+
+  if (
+    Array.isArray(metaFacebookPages) &&
+    metaFacebookPages.length
+  ) {
+    pages = metaFacebookPages.map(
+      normalizeMetaDirectPage
+    );
+  }
+
+  if (!pages.length) {
+    const data = await metaDirectRequest(
+      `${META_BACKEND_URL}` +
+      `/api/meta/pages?t=${Date.now()}`
+    );
+
+    pages = (
+      Array.isArray(data.pages)
+        ? data.pages
+        : []
+    )
+      .map(normalizeMetaDirectPage)
+      .filter(page => page.id);
+  }
+
+  metaDirectState.pages = pages;
+
+  if (!pages.length) {
+    metaDirectPageSelect.innerHTML = `
+      <option value="">
+        Facebook-сторінок не знайдено
+      </option>
+    `;
+
+    setMetaDirectStatus(
+      "Facebook-сторінок не знайдено.",
+      "error"
+    );
+
+    return false;
+  }
+
+  metaDirectPageSelect.innerHTML =
+    pages
+      .map(page => `
+        <option
+          value="${metaDirectEscape(page.id)}"
+        >
+          ${metaDirectEscape(page.name)}
+        </option>
+      `)
+      .join("");
+
+  const previousExists =
+    pages.some(
+      page =>
+        String(page.id) ===
+        String(previousPageId)
+    );
+
+  metaDirectPageSelect.value =
+    previousExists
+      ? previousPageId
+      : pages[0].id;
+
+  return true;
+}
+
+
+function metaDirectCurrentPage() {
+  const pageId =
+    metaDirectPageSelect?.value || "";
+
+  return (
+    metaDirectState.pages.find(
+      page =>
+        String(page.id) ===
+        String(pageId)
+    ) || null
+  );
+}
+
+
+function renderMetaDirectConversations() {
+  if (
+    !metaDirectConversations ||
+    !metaDirectConversationCount
+  ) {
+    return;
+  }
+
+  const conversations =
+    metaDirectState.conversations;
+
+  metaDirectConversationCount.textContent =
+    String(conversations.length);
+
+  if (!conversations.length) {
+    metaDirectConversations.innerHTML = `
+      <div class="meta-direct-empty">
+        Нових діалогів поки немає.<br>
+        Напишіть сторінці у Messenger,
+        і чат з’явиться тут.
+      </div>
+    `;
+
+    return;
+  }
+
+  const activeParticipantId =
+    metaDirectState
+      .activeConversation
+      ?.participant_id || "";
+
+  metaDirectConversations.innerHTML =
+    conversations
+      .map(conversation => {
+        const participantId = String(
+          conversation.participant_id || ""
+        );
+
+        const name =
+          conversation.participant_name ||
+          `Клієнт ${participantId.slice(-6)}`;
+
+        const avatar =
+          metaDirectSafeUrl(
+            conversation.participant_avatar
+          );
+
+        const unread =
+          Number(
+            conversation.unread_count || 0
+          );
+
+        const active =
+          participantId ===
+          String(activeParticipantId);
+
+        return `
+          <button
+            type="button"
+            class="
+              meta-direct-conversation
+              ${active ? "is-active" : ""}
+            "
+            data-meta-direct-participant="
+              ${metaDirectEscape(participantId)}
+            "
+          >
+            <div
+              class="meta-direct-conversation__avatar"
+            >
+              ${
+                avatar
+                  ? `
+                    <img
+                      src="${metaDirectEscape(avatar)}"
+                      alt=""
+                      loading="lazy"
+                    >
+                  `
+                  : metaDirectEscape(
+                      metaDirectInitials(name)
+                    )
+              }
+            </div>
+
+            <div
+              class="meta-direct-conversation__body"
+            >
+              <div
+                class="meta-direct-conversation__top"
+              >
+                <div
+                  class="meta-direct-conversation__name"
+                >
+                  ${metaDirectEscape(name)}
+                </div>
+
+                <div
+                  class="meta-direct-conversation__time"
+                >
+                  ${metaDirectEscape(
+                    metaDirectTime(
+                      conversation.last_message_at
+                    )
+                  )}
+                </div>
+              </div>
+
+              <div
+                class="meta-direct-conversation__bottom"
+              >
+                <div
+                  class="meta-direct-conversation__preview"
+                >
+                  ${metaDirectEscape(
+                    conversation.last_message ||
+                    "Нове повідомлення"
+                  )}
+                </div>
+
+                ${
+                  unread > 0
+                    ? `
+                      <span
+                        class="
+                          meta-direct-conversation__badge
+                        "
+                      >
+                        ${unread > 99 ? "99+" : unread}
+                      </span>
+                    `
+                    : ""
+                }
+              </div>
+            </div>
+          </button>
+        `;
+      })
+      .join("");
+
+  metaDirectConversations
+    .querySelectorAll(
+      "[data-meta-direct-participant]"
+    )
+    .forEach(button => {
+      button.addEventListener(
+        "click",
+        () => {
+          const participantId =
+            button.dataset
+              .metaDirectParticipant;
+
+          const conversation =
+            metaDirectState
+              .conversations
+              .find(
+                item =>
+                  String(
+                    item.participant_id
+                  ) ===
+                  String(participantId)
+              );
+
+          if (conversation) {
+            openMetaDirectConversation(
+              conversation
+            );
+          }
+        }
+      );
+    });
+}
+
+
+function renderMetaDirectHeader() {
+  if (!metaDirectChatHeader) {
+    return;
+  }
+
+  const conversation =
+    metaDirectState.activeConversation;
+
+  if (!conversation) {
+    metaDirectChatHeader.innerHTML = `
+      <div class="meta-direct-chat__avatar">
+        💬
+      </div>
+
+      <div class="meta-direct-chat__person">
+        <strong>Оберіть діалог</strong>
+        <small>
+          Тут з’явиться ім’я клієнта
+        </small>
+      </div>
+    `;
+
+    return;
+  }
+
+  const participantId = String(
+    conversation.participant_id || ""
+  );
+
+  const name =
+    conversation.participant_name ||
+    `Клієнт ${participantId.slice(-6)}`;
+
+  const avatar =
+    metaDirectSafeUrl(
+      conversation.participant_avatar
+    );
+
+  metaDirectChatHeader.innerHTML = `
+    <div class="meta-direct-chat__avatar">
+      ${
+        avatar
+          ? `
+            <img
+              src="${metaDirectEscape(avatar)}"
+              alt=""
+              loading="lazy"
+            >
+          `
+          : metaDirectEscape(
+              metaDirectInitials(name)
+            )
+      }
+    </div>
+
+    <div class="meta-direct-chat__person">
+      <strong>
+        ${metaDirectEscape(name)}
+      </strong>
+
+      <small>
+        Messenger • ID:
+        ${metaDirectEscape(participantId)}
+      </small>
+    </div>
+  `;
+}
+
+
+function renderMetaDirectAttachment(message) {
+  const url =
+    metaDirectSafeUrl(
+      message.attachment_url
+    );
+
+  if (!url) {
+    return "";
+  }
+
+  const type =
+    String(
+      message.message_type || ""
+    ).toLowerCase();
+
+  if (type === "image") {
+    return `
+      <a
+        class="meta-direct-attachment"
+        href="${metaDirectEscape(url)}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <img
+          src="${metaDirectEscape(url)}"
+          alt="Фото"
+          loading="lazy"
+        >
+      </a>
+    `;
+  }
+
+  return `
+    <a
+      class="meta-direct-file"
+      href="${metaDirectEscape(url)}"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      📎 Відкрити вкладення
+    </a>
+  `;
+}
+
+
+function renderMetaDirectMessages({
+  scrollToBottom = true
+} = {}) {
+  if (!metaDirectMessages) {
+    return;
+  }
+
+  const messages =
+    metaDirectState.messages;
+
+  if (!messages.length) {
+    metaDirectMessages.innerHTML = `
+      <div class="meta-direct-empty">
+        У цьому діалозі повідомлень поки немає.
+      </div>
+    `;
+
+    return;
+  }
+
+  let previousDay = "";
+
+  const html = [];
+
+  messages.forEach(message => {
+    const dayKey =
+      metaDirectDayKey(
+        message.timestamp
+      );
+
+    if (
+      dayKey &&
+      dayKey !== previousDay
+    ) {
+      html.push(`
+        <div class="meta-direct-day">
+          ${metaDirectEscape(
+            metaDirectDayLabel(
+              message.timestamp
+            )
+          )}
+        </div>
+      `);
+
+      previousDay = dayKey;
+    }
+
+    const outgoing =
+      message.direction === "out";
+
+    const text =
+      String(message.text || "").trim();
+
+    html.push(`
+      <div
+        class="
+          meta-direct-message-row
+          ${outgoing ? "is-out" : "is-in"}
+        "
+      >
+        <div class="meta-direct-bubble">
+
+          ${renderMetaDirectAttachment(message)}
+
+          ${
+            text
+              ? `
+                <div
+                  class="meta-direct-bubble__text"
+                >
+                  ${metaDirectEscape(text)}
+                </div>
+              `
+              : ""
+          }
+
+          <div
+            class="meta-direct-bubble__meta"
+          >
+            <span>
+              ${metaDirectEscape(
+                metaDirectMessageTime(
+                  message.timestamp
+                )
+              )}
+            </span>
+
+            ${
+  outgoing
+    ? (() => {
+        const check =
+          metaDirectCheckMark(
+            message.status
+          );
+
+        return `
+          <span
+            class="
+              meta-direct-message-status
+              ${check.className}
+            "
+            title="${check.title}"
+          >
+            ${check.text}
+          </span>
+        `;
+      })()
+    : ""
+}
+          </div>
+
+        </div>
+      </div>
+    `);
+  });
+
+  metaDirectMessages.innerHTML =
+    html.join("");
+
+  if (scrollToBottom) {
+    requestAnimationFrame(() => {
+      metaDirectMessages.scrollTop =
+        metaDirectMessages.scrollHeight;
+    });
+  }
+}
+
+
+async function markMetaDirectRead() {
+  const conversation =
+    metaDirectState.activeConversation;
+
+  const pageId =
+    metaDirectPageSelect?.value || "";
+
+  const participantId =
+    conversation?.participant_id || "";
+
+  if (
+    !pageId ||
+    !participantId
+  ) {
+    return;
+  }
+
+  try {
+    const query =
+      new URLSearchParams({
+        page_id: pageId,
+        participant_id:
+          String(participantId)
+      });
+
+    await metaDirectRequest(
+      `${META_BACKEND_URL}` +
+      `/api/meta/direct/read?${query}`,
+      {
+        method: "POST"
+      }
+    );
+
+    conversation.unread_count = 0;
+
+    renderMetaDirectConversations();
+
+  } catch (error) {
+    console.warn(
+      "Meta Direct read error:",
+      error
+    );
+  }
+}
+
+
+async function loadMetaDirectMessages({
+  silent = false
+} = {}) {
+  const conversation =
+    metaDirectState.activeConversation;
+
+  const pageId =
+    metaDirectPageSelect?.value || "";
+
+  const participantId =
+    conversation?.participant_id || "";
+
+  if (
+    !pageId ||
+    !participantId ||
+    metaDirectState.messagesLoading
+  ) {
+    return;
+  }
+
+  const distanceFromBottom =
+    metaDirectMessages
+      ? (
+          metaDirectMessages.scrollHeight -
+          metaDirectMessages.scrollTop -
+          metaDirectMessages.clientHeight
+        )
+      : 0;
+
+  const wasNearBottom =
+    distanceFromBottom < 110;
+
+  metaDirectState.messagesLoading = true;
+
+  if (!silent && metaDirectMessages) {
+    metaDirectMessages.innerHTML = `
+      <div class="meta-direct-loading">
+        Завантажуємо повідомлення...
+      </div>
+    `;
+  }
+
+  try {
+    const query =
+      new URLSearchParams({
+        page_id: pageId,
+        participant_id:
+          String(participantId),
+        limit: "300",
+        t: String(Date.now())
+      });
+
+    const data =
+      await metaDirectRequest(
+        `${META_BACKEND_URL}` +
+        `/api/meta/direct/messages?${query}`
+      );
+
+    const nextMessages =
+  Array.isArray(data.messages)
+    ? data.messages
+    : [];
+
+const nextSignature =
+  metaDirectCreateSignature(
+    nextMessages,
+    [
+      "mid",
+      "direction",
+      "text",
+      "message_type",
+      "attachment_url",
+      "timestamp",
+      "status"
+    ]
+  );
+
+const messagesChanged =
+  nextSignature !==
+  metaDirectState.messagesSignature;
+
+metaDirectState.messages =
+  nextMessages;
+
+metaDirectState.messagesSignature =
+  nextSignature;
+
+if (messagesChanged || !silent) {
+  renderMetaDirectMessages({
+    scrollToBottom:
+      !silent || wasNearBottom
+  });
+}
+
+  } catch (error) {
+    console.error(
+      "Meta Direct messages error:",
+      error
+    );
+
+    if (!silent && metaDirectMessages) {
+      metaDirectMessages.innerHTML = `
+        <div class="meta-direct-empty">
+          Не вдалося завантажити повідомлення.<br>
+          ${metaDirectEscape(error.message)}
+        </div>
+      `;
+    }
+
+    setMetaDirectStatus(
+      error.message ||
+      "Помилка завантаження повідомлень.",
+      "error"
+    );
+
+  } finally {
+    metaDirectState.messagesLoading = false;
+  }
+}
+
+
+async function openMetaDirectConversation(
+  conversation
+) {
+  metaDirectState.activeConversation =
+    conversation;
+
+  renderMetaDirectConversations();
+  renderMetaDirectHeader();
+
+  if (metaDirectMessageInput) {
+    metaDirectMessageInput.disabled = false;
+  }
+
+  if (metaDirectSendBtn) {
+    metaDirectSendBtn.disabled = false;
+  }
+
+  await loadMetaDirectMessages({
+    silent: false
+  });
+
+  await markMetaDirectRead();
+
+  metaDirectMessageInput?.focus();
+}
+
+
+function resetMetaDirectConversation() {
+  metaDirectState.activeConversation = null;
+  metaDirectState.messages = [];
+
+  renderMetaDirectHeader();
+
+  if (metaDirectMessages) {
+    metaDirectMessages.innerHTML = `
+      <div class="meta-direct-empty">
+        Оберіть клієнта зі списку діалогів.
+      </div>
+    `;
+  }
+
+  if (metaDirectMessageInput) {
+    metaDirectMessageInput.value = "";
+    metaDirectMessageInput.disabled = true;
+  }
+
+  if (metaDirectSendBtn) {
+    metaDirectSendBtn.disabled = true;
+  }
+}
+
+
+async function loadMetaDirectConversations({
+  silent = false,
+  openFirst = false
+} = {}) {
+  const pageId =
+    metaDirectPageSelect?.value || "";
+
+  if (
+    !pageId ||
+    metaDirectState.conversationsLoading
+  ) {
+    return;
+  }
+
+  metaDirectState.conversationsLoading = true;
+
+  if (!silent) {
+    setMetaDirectStatus(
+      "Завантажуємо Messenger-діалоги...",
+      "loading"
+    );
+
+    if (metaDirectConversations) {
+      metaDirectConversations.innerHTML = `
+        <div class="meta-direct-loading">
+          Завантажуємо діалоги...
+        </div>
+      `;
+    }
+  }
+
+  const previousParticipantId =
+    metaDirectState
+      .activeConversation
+      ?.participant_id || "";
+
+  try {
+    const query =
+      new URLSearchParams({
+        page_id: pageId,
+        limit: "200",
+        t: String(Date.now())
+      });
+
+    const data =
+      await metaDirectRequest(
+        `${META_BACKEND_URL}` +
+        `/api/meta/direct/conversations?${query}`
+      );
+
+    const nextConversations =
+  Array.isArray(data.conversations)
+    ? data.conversations
+    : [];
+
+const nextSignature =
+  metaDirectCreateSignature(
+    nextConversations,
+    [
+      "participant_id",
+      "participant_name",
+      "participant_avatar",
+      "last_message",
+      "last_message_at",
+      "unread_count"
+    ]
+  );
+
+const conversationsChanged =
+  nextSignature !==
+  metaDirectState.conversationsSignature;
+
+metaDirectState.conversations =
+  nextConversations;
+
+metaDirectState.conversationsSignature =
+  nextSignature;
+
+    if (previousParticipantId) {
+      metaDirectState.activeConversation =
+        metaDirectState
+          .conversations
+          .find(
+            conversation =>
+              String(
+                conversation.participant_id
+              ) ===
+              String(previousParticipantId)
+          ) || null;
+    }
+
+    if (
+  conversationsChanged ||
+  !silent
+) {
+  renderMetaDirectConversations();
+  renderMetaDirectHeader();
+}
+
+    const page =
+      metaDirectCurrentPage();
+
+    if (!silent) {
+      setMetaDirectStatus(
+        `Messenger підключено: ` +
+        `${page?.name || "Facebook Page"}. ` +
+        `Діалогів: ` +
+        `${metaDirectState.conversations.length}`,
+        "success"
+      );
+    }
+
+    if (
+      metaDirectState.activeConversation
+    ) {
+      await loadMetaDirectMessages({
+        silent: true
+      });
+    } else if (
+      openFirst &&
+      metaDirectState.conversations[0]
+    ) {
+      await openMetaDirectConversation(
+        metaDirectState.conversations[0]
+      );
+    } else {
+      resetMetaDirectConversation();
+    }
+
+  } catch (error) {
+    console.error(
+      "Meta Direct conversations error:",
+      error
+    );
+
+    if (!silent) {
+      setMetaDirectStatus(
+        error.message ||
+        "Не вдалося завантажити діалоги.",
+        "error"
+      );
+
+      if (metaDirectConversations) {
+        metaDirectConversations.innerHTML = `
+          <div class="meta-direct-empty">
+            Помилка завантаження діалогів.<br>
+            ${metaDirectEscape(error.message)}
+          </div>
+        `;
+      }
+    }
+
+  } finally {
+    metaDirectState.conversationsLoading = false;
+  }
+}
+
+
+async function sendMetaDirectMessage(
+  event
+) {
+  event?.preventDefault();
+
+  if (
+    metaDirectState.sending ||
+    !metaDirectState.activeConversation
+  ) {
+    return;
+  }
+
+  const pageId =
+    metaDirectPageSelect?.value || "";
+
+  const participantId =
+    metaDirectState
+      .activeConversation
+      .participant_id || "";
+
+  const message =
+    metaDirectMessageInput
+      ?.value
+      .trim() || "";
+
+  if (!message) {
+    metaDirectMessageInput?.focus();
+    return;
+  }
+
+  metaDirectState.sending = true;
+
+  const oldButtonText =
+    metaDirectSendBtn?.textContent ||
+    "Надіслати ➤";
+
+  if (metaDirectSendBtn) {
+    metaDirectSendBtn.disabled = true;
+    metaDirectSendBtn.textContent =
+      "Надсилаємо...";
+  }
+
+  if (metaDirectMessageInput) {
+    metaDirectMessageInput.disabled = true;
+  }
+
+  try {
+    await metaDirectRequest(
+      `${META_BACKEND_URL}` +
+      `/api/meta/direct/send`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          page_id: pageId,
+          participant_id:
+            String(participantId),
+          message
+        })
+      }
+    );
+
+    if (metaDirectMessageInput) {
+      metaDirectMessageInput.value = "";
+    }
+
+    setMetaDirectStatus(
+      "Повідомлення успішно надіслано.",
+      "success"
+    );
+
+    await loadMetaDirectMessages({
+      silent: false
+    });
+
+    await loadMetaDirectConversations({
+      silent: true
+    });
+
+  } catch (error) {
+    console.error(
+      "Meta Direct send error:",
+      error
+    );
+
+    setMetaDirectStatus(
+      error.message ||
+      "Не вдалося надіслати повідомлення.",
+      "error"
+    );
+
+  } finally {
+    metaDirectState.sending = false;
+
+    if (metaDirectSendBtn) {
+      metaDirectSendBtn.disabled = false;
+      metaDirectSendBtn.textContent =
+        oldButtonText;
+    }
+
+    if (metaDirectMessageInput) {
+      metaDirectMessageInput.disabled = false;
+      metaDirectMessageInput.focus();
+    }
+  }
+}
+
+
+function startMetaDirectPolling() {
+  if (metaDirectState.pollingTimer) {
+    return;
+  }
+
+  metaDirectState.pollingTimer =
+    window.setInterval(() => {
+      if (!metaDirectIsVisible()) {
+        return;
+      }
+
+      loadMetaDirectConversations({
+        silent: true
+      });
+    }, 5000);
+}
+
+
+function stopMetaDirectPolling() {
+  if (!metaDirectState.pollingTimer) {
+    return;
+  }
+
+  clearInterval(
+    metaDirectState.pollingTimer
+  );
+
+  metaDirectState.pollingTimer = null;
+}
+
+function metaDirectCheckMark(status) {
+  const cleanStatus =
+    String(status || "sent")
+      .toLowerCase();
+
+  if (cleanStatus === "read") {
+    return {
+      text: "✓✓",
+      className: "is-read",
+      title: "Прочитано"
+    };
+  }
+
+  return {
+    text: "✓",
+    className: "",
+    title:
+      cleanStatus === "delivered"
+        ? "Доставлено"
+        : "Надіслано"
+  };
+}
+
+
+async function initMetaDirect() {
+  if (
+    !metaDirectPanel ||
+    !metaDirectPageSelect
+  ) {
+    return;
+  }
+
+  setMetaDirectStatus(
+    "Підключаємо Messenger Direct...",
+    "loading"
+  );
+
+  try {
+    const hasPages =
+      await loadMetaDirectPages();
+
+    if (!hasPages) {
+      return;
+    }
+
+    await loadMetaDirectConversations({
+      silent: false,
+      openFirst: true
+    });
+
+    metaDirectState.initialized = true;
+
+    startMetaDirectPolling();
+
+  } catch (error) {
+    console.error(
+      "Meta Direct init error:",
+      error
+    );
+
+    setMetaDirectStatus(
+      error.message ||
+      "Не вдалося запустити Messenger Direct.",
+      "error"
+    );
+  }
+}
+
+
+/* Події Direct */
+
+metaDirectRefreshBtn?.addEventListener(
+  "click",
+  async () => {
+    metaDirectRefreshBtn.disabled = true;
+
+    try {
+      await loadMetaDirectPages();
+
+      await loadMetaDirectConversations({
+        silent: false,
+        openFirst: true
+      });
+    } finally {
+      metaDirectRefreshBtn.disabled = false;
+    }
+  }
+);
+
+
+metaDirectPageSelect?.addEventListener(
+  "change",
+  async () => {
+    metaDirectState.conversations = [];
+
+    resetMetaDirectConversation();
+
+    await loadMetaDirectConversations({
+      silent: false,
+      openFirst: true
+    });
+  }
+);
+
+
+metaDirectComposer?.addEventListener(
+  "submit",
+  sendMetaDirectMessage
+);
+
+
+metaDirectMessageInput?.addEventListener(
+  "keydown",
+  event => {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+
+      metaDirectComposer?.requestSubmit();
+    }
+  }
+);
+
+
+window.addEventListener(
+  "focus",
+  () => {
+    if (metaDirectIsVisible()) {
+      loadMetaDirectConversations({
+        silent: true
+      });
+    }
+  }
+);
+
+
+closeMetaHubBtn?.addEventListener(
+  "click",
+  stopMetaDirectPolling
+);
+
+
+metaHub?.addEventListener(
+  "click",
+  event => {
+    if (
+      event.target?.dataset?.metaClose === "1"
+    ) {
+      stopMetaDirectPolling();
+    }
+  }
+);
 
 })();

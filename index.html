@@ -1286,17 +1286,125 @@
 </section>
 
         <section class="gws-panel" data-meta-panel="direct">
-          <div class="gws-panel__head">
-            <div>
-              <h3>Instagram Direct / Messenger</h3>
-              <p>Тут будуть повідомлення клієнтів після отримання потрібних permissions.</p>
-            </div>
-          </div>
+  <div class="gws-panel__head">
+    <div>
+      <h3>Messenger Direct</h3>
+      <p>
+        Вхідні повідомлення клієнтів Facebook Page
+        та відповіді прямо з CRM.
+      </p>
+    </div>
 
-          <div class="gws-status-line">
-            Direct потребує окремих дозволів Meta. Спочатку перевіряємо Pages і Lead Ads.
-          </div>
-        </section>
+    <div class="gws-actions-row">
+      <button
+        id="metaDirectRefreshBtn"
+        class="btn btn-primary"
+        type="button"
+      >
+        🔄 Оновити повідомлення
+      </button>
+    </div>
+  </div>
+
+  <div class="meta-direct-toolbar">
+    <label class="meta-direct-field">
+      <span>Facebook-сторінка</span>
+
+      <select id="metaDirectPageSelect">
+        <option value="">
+          Оберіть Facebook-сторінку
+        </option>
+      </select>
+    </label>
+
+    <div
+      id="metaDirectStatus"
+      class="gws-status-line"
+    >
+      Оберіть сторінку, щоб завантажити повідомлення.
+    </div>
+  </div>
+
+  <div class="meta-direct-layout">
+
+    <!-- Ліва колонка: список діалогів -->
+    <aside class="meta-direct-sidebar">
+      <div class="meta-direct-sidebar__head">
+        <div>
+          <h4>Діалоги</h4>
+          <p>Останні повідомлення клієнтів</p>
+        </div>
+
+        <span
+          id="metaDirectConversationCount"
+          class="meta-direct-count"
+        >
+          0
+        </span>
+      </div>
+
+      <div
+        id="metaDirectConversations"
+        class="meta-direct-conversations"
+      >
+        <div class="meta-direct-empty">
+          Діалогів поки немає.
+        </div>
+      </div>
+    </aside>
+
+    <!-- Права колонка: відкритий чат -->
+    <section class="meta-direct-chat">
+
+      <header
+        id="metaDirectChatHeader"
+        class="meta-direct-chat__head"
+      >
+        <div class="meta-direct-chat__avatar">
+          💬
+        </div>
+
+        <div class="meta-direct-chat__person">
+          <strong>Оберіть діалог</strong>
+          <small>
+            Тут з’явиться ім’я клієнта
+          </small>
+        </div>
+      </header>
+
+      <div
+        id="metaDirectMessages"
+        class="meta-direct-messages"
+      >
+        <div class="meta-direct-empty">
+          Оберіть клієнта зі списку діалогів.
+        </div>
+      </div>
+
+      <form
+        id="metaDirectComposer"
+        class="meta-direct-composer"
+      >
+        <textarea
+          id="metaDirectMessageInput"
+          rows="2"
+          placeholder="Напишіть відповідь клієнту..."
+          disabled
+        ></textarea>
+
+        <button
+          id="metaDirectSendBtn"
+          class="btn btn-primary"
+          type="submit"
+          disabled
+        >
+          Надіслати ➤
+        </button>
+      </form>
+
+    </section>
+  </div>
+</section>
 
         <section class="gws-panel" data-meta-panel="settings">
           <div class="gws-panel__head">

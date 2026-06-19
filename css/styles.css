@@ -5607,3 +5607,778 @@ body.gws-lock .gws-hub *{
     grid-template-columns:1fr;
   }
 }
+
+/* =========================================================
+   META DIRECT / MESSENGER
+   ========================================================= */
+
+[data-meta-panel="direct"]{
+  --direct-blue:#1877f2;
+  --direct-purple:#6c5ce7;
+  --direct-green:#23b26b;
+  --direct-bg:#f5f7fb;
+  --direct-line:#e5eaf2;
+  --direct-text:#172033;
+  --direct-muted:#718096;
+}
+
+/* Верхня панель */
+
+.meta-direct-toolbar{
+  display:grid;
+  grid-template-columns:minmax(260px, 380px) 1fr;
+  align-items:end;
+  gap:14px;
+  margin-bottom:16px;
+}
+
+.meta-direct-field{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.meta-direct-field > span{
+  color:#475569;
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+}
+
+.meta-direct-field select{
+  width:100%;
+  min-height:46px;
+  padding:10px 42px 10px 14px;
+  border:1px solid #dbe4ef;
+  border-radius:15px;
+  outline:none;
+  background:
+    linear-gradient(135deg, #ffffff, #f8faff);
+  color:#172033;
+  font-family:inherit;
+  font-size:14px;
+  font-weight:850;
+  cursor:pointer;
+  transition:
+    border-color .18s ease,
+    box-shadow .18s ease,
+    transform .18s ease;
+}
+
+.meta-direct-field select:hover{
+  border-color:#a5b4fc;
+}
+
+.meta-direct-field select:focus{
+  border-color:#818cf8;
+  box-shadow:
+    0 0 0 4px rgba(99,102,241,.12),
+    0 12px 28px rgba(79,70,229,.08);
+}
+
+#metaDirectStatus{
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  padding:11px 15px;
+  border-style:solid;
+  border-color:#dbe4ef;
+  border-radius:15px;
+  background:#fff;
+  font-size:13px;
+  font-weight:800;
+}
+
+#metaDirectStatus.meta-direct-status--loading{
+  border-color:#bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+}
+
+#metaDirectStatus.meta-direct-status--success{
+  border-color:#bbf7d0;
+  background:#ecfdf3;
+  color:#047857;
+}
+
+#metaDirectStatus.meta-direct-status--error{
+  border-color:#fecaca;
+  background:#fef2f2;
+  color:#b91c1c;
+}
+
+/* Головний чат */
+
+.meta-direct-layout{
+  position:relative;
+  display:grid;
+  grid-template-columns:350px minmax(0, 1fr);
+  height:min(68vh, 720px);
+  min-height:560px;
+  overflow:hidden;
+  border:1px solid rgba(226,232,240,.98);
+  border-radius:26px;
+  background:#fff;
+  box-shadow:
+    0 28px 70px rgba(15,23,42,.10),
+    0 4px 18px rgba(15,23,42,.04);
+}
+
+/* Ліва колонка */
+
+.meta-direct-sidebar{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-right:1px solid var(--direct-line);
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(108,92,231,.10),
+      transparent 38%
+    ),
+    linear-gradient(
+      180deg,
+      #fbfcff 0%,
+      #f7f9fd 100%
+    );
+}
+
+.meta-direct-sidebar__head{
+  min-height:78px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:17px 18px;
+  border-bottom:1px solid var(--direct-line);
+  background:rgba(255,255,255,.82);
+}
+
+.meta-direct-sidebar__head h4{
+  margin:0;
+  color:var(--direct-text);
+  font-size:18px;
+  font-weight:950;
+}
+
+.meta-direct-sidebar__head p{
+  margin:4px 0 0;
+  color:var(--direct-muted);
+  font-size:12px;
+  font-weight:750;
+}
+
+.meta-direct-count{
+  min-width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  padding:0 9px;
+  border-radius:999px;
+  background:
+    linear-gradient(
+      135deg,
+      var(--direct-purple),
+      var(--direct-blue)
+    );
+  color:#fff;
+  font-size:13px;
+  font-weight:950;
+  box-shadow:0 9px 20px rgba(79,70,229,.22);
+}
+
+.meta-direct-conversations{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:10px;
+  scrollbar-width:thin;
+  scrollbar-color:#cbd5e1 transparent;
+}
+
+.meta-direct-conversations::-webkit-scrollbar{
+  width:7px;
+}
+
+.meta-direct-conversations::-webkit-scrollbar-thumb{
+  border-radius:999px;
+  background:#cbd5e1;
+}
+
+.meta-direct-conversation{
+  width:100%;
+  display:grid;
+  grid-template-columns:52px minmax(0, 1fr);
+  gap:12px;
+  margin-bottom:7px;
+  padding:12px;
+  border:1px solid transparent;
+  border-radius:18px;
+  background:transparent;
+  cursor:pointer;
+  text-align:left;
+  font-family:inherit;
+  transition:
+    background .18s ease,
+    border-color .18s ease,
+    transform .18s ease,
+    box-shadow .18s ease;
+}
+
+.meta-direct-conversation:hover{
+  transform:translateY(-1px);
+  border-color:#dbeafe;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 10px 24px rgba(15,23,42,.065);
+}
+
+.meta-direct-conversation.is-active{
+  border-color:rgba(99,102,241,.26);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(238,242,255,.98),
+      rgba(239,246,255,.98)
+    );
+  box-shadow:
+    0 14px 28px rgba(79,70,229,.10),
+    inset 3px 0 0 #6366f1;
+}
+
+.meta-direct-conversation__avatar{
+  position:relative;
+  width:52px;
+  height:52px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border-radius:17px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(108,92,231,.18),
+      rgba(24,119,242,.18)
+    );
+  color:#4338ca;
+  font-size:15px;
+  font-weight:950;
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+
+.meta-direct-conversation__avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.meta-direct-conversation__avatar::after{
+  content:"";
+  position:absolute;
+  right:2px;
+  bottom:2px;
+  width:10px;
+  height:10px;
+  border:2px solid #fff;
+  border-radius:50%;
+  background:#22c55e;
+}
+
+.meta-direct-conversation__body{
+  min-width:0;
+  align-self:center;
+}
+
+.meta-direct-conversation__top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+
+.meta-direct-conversation__name{
+  min-width:0;
+  overflow:hidden;
+  color:#172033;
+  font-size:14px;
+  font-weight:950;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.meta-direct-conversation__time{
+  flex:0 0 auto;
+  color:#94a3b8;
+  font-size:10px;
+  font-weight:850;
+}
+
+.meta-direct-conversation__bottom{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:5px;
+}
+
+.meta-direct-conversation__preview{
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  color:#64748b;
+  font-size:12px;
+  font-weight:750;
+  line-height:1.35;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.meta-direct-conversation__badge{
+  min-width:22px;
+  height:22px;
+  display:grid;
+  place-items:center;
+  padding:0 6px;
+  border-radius:999px;
+  background:
+    linear-gradient(
+      135deg,
+      #7c3aed,
+      #2563eb
+    );
+  color:#fff;
+  font-size:10px;
+  font-weight:950;
+}
+
+/* Права колонка */
+
+.meta-direct-chat{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:#fff;
+}
+
+.meta-direct-chat__head{
+  min-height:78px;
+  display:flex;
+  align-items:center;
+  gap:13px;
+  padding:14px 20px;
+  border-bottom:1px solid var(--direct-line);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(24,119,242,.08),
+      transparent 34%
+    ),
+    rgba(255,255,255,.96);
+}
+
+.meta-direct-chat__avatar{
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+  overflow:hidden;
+  border-radius:16px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(108,92,231,.15),
+      rgba(24,119,242,.16)
+    );
+  color:#4338ca;
+  font-size:18px;
+  font-weight:950;
+}
+
+.meta-direct-chat__avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.meta-direct-chat__person{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.meta-direct-chat__person strong{
+  overflow:hidden;
+  color:#172033;
+  font-size:16px;
+  font-weight:950;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.meta-direct-chat__person small{
+  color:#64748b;
+  font-size:11px;
+  font-weight:750;
+}
+
+/* Повідомлення */
+
+.meta-direct-messages{
+  position:relative;
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  padding:22px 24px;
+  scroll-behavior:smooth;
+  overscroll-behavior:contain;
+  background:
+    radial-gradient(
+      circle at 15% 10%,
+      rgba(108,92,231,.07),
+      transparent 27%
+    ),
+    radial-gradient(
+      circle at 90% 90%,
+      rgba(24,119,242,.065),
+      transparent 31%
+    ),
+    linear-gradient(
+      180deg,
+      #f8faff 0%,
+      #f3f6fb 100%
+    );
+  scrollbar-width:thin;
+  scrollbar-color:#cbd5e1 transparent;
+}
+
+.meta-direct-messages::-webkit-scrollbar{
+  width:8px;
+}
+
+.meta-direct-messages::-webkit-scrollbar-thumb{
+  border-radius:999px;
+  background:#cbd5e1;
+}
+
+.meta-direct-day{
+  width:max-content;
+  max-width:90%;
+  margin:8px auto 18px;
+  padding:6px 11px;
+  border:1px solid rgba(203,213,225,.72);
+  border-radius:999px;
+  background:rgba(255,255,255,.86);
+  color:#64748b;
+  font-size:10px;
+  font-weight:900;
+  box-shadow:0 7px 18px rgba(15,23,42,.045);
+}
+
+.meta-direct-message-row{
+  display:flex;
+  margin:7px 0;
+  animation:metaDirectMessageIn .22s ease both;
+}
+
+.meta-direct-message-row.is-in{
+  justify-content:flex-start;
+}
+
+.meta-direct-message-row.is-out{
+  justify-content:flex-end;
+}
+
+.meta-direct-bubble{
+  position:relative;
+  max-width:min(72%, 620px);
+  padding:10px 13px 7px;
+  border:1px solid rgba(226,232,240,.92);
+  border-radius:18px;
+  background:#fff;
+  color:#172033;
+  box-shadow:0 8px 20px rgba(15,23,42,.07);
+}
+
+.meta-direct-message-row.is-in .meta-direct-bubble{
+  border-bottom-left-radius:6px;
+}
+
+.meta-direct-message-row.is-out .meta-direct-bubble{
+  border-color:transparent;
+  border-bottom-right-radius:6px;
+  background:
+    linear-gradient(
+      135deg,
+      #6c5ce7,
+      #3478f6
+    );
+  color:#fff;
+  box-shadow:0 11px 25px rgba(79,70,229,.23);
+}
+
+.meta-direct-bubble__text{
+  font-size:13px;
+  font-weight:700;
+  line-height:1.48;
+  overflow-wrap:anywhere;
+  white-space:pre-wrap;
+}
+
+.meta-direct-bubble__meta{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+  margin-top:5px;
+  color:#94a3b8;
+  font-size:9px;
+  font-weight:800;
+}
+
+.meta-direct-message-row.is-out .meta-direct-bubble__meta{
+  color:rgba(255,255,255,.76);
+}
+
+.meta-direct-attachment{
+  display:block;
+  margin-bottom:8px;
+  overflow:hidden;
+  border-radius:13px;
+}
+
+.meta-direct-attachment img{
+  display:block;
+  width:min(360px, 100%);
+  max-height:340px;
+  object-fit:cover;
+  border-radius:13px;
+}
+
+.meta-direct-file{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:9px 11px;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:12px;
+  background:rgba(255,255,255,.13);
+  color:inherit;
+  font-size:12px;
+  font-weight:850;
+}
+
+/* Поле відповіді */
+
+.meta-direct-composer{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  align-items:end;
+  gap:12px;
+  padding:14px 16px;
+  border-top:1px solid var(--direct-line);
+  background:rgba(255,255,255,.98);
+}
+
+.meta-direct-composer textarea{
+  width:100%;
+  min-height:48px;
+  max-height:140px;
+  resize:none;
+  padding:13px 15px;
+  border:1px solid #dbe4ef;
+  border-radius:16px;
+  outline:none;
+  background:#f8fafc;
+  color:#172033;
+  font-family:inherit;
+  font-size:13px;
+  font-weight:700;
+  line-height:1.4;
+  transition:
+    border-color .18s ease,
+    box-shadow .18s ease,
+    background .18s ease;
+}
+
+.meta-direct-composer textarea:focus{
+  border-color:#818cf8;
+  background:#fff;
+  box-shadow:0 0 0 4px rgba(99,102,241,.11);
+}
+
+.meta-direct-composer textarea:disabled{
+  cursor:not-allowed;
+  opacity:.65;
+}
+
+.meta-direct-composer button{
+  min-height:48px;
+  padding:11px 18px;
+  border-radius:15px;
+  background:
+    linear-gradient(
+      135deg,
+      #6c5ce7,
+      #1877f2
+    );
+  border:none;
+  box-shadow:0 11px 24px rgba(79,70,229,.24);
+  transition:
+    transform .18s ease,
+    box-shadow .18s ease,
+    opacity .18s ease;
+}
+
+.meta-direct-composer button:hover:not(:disabled){
+  transform:translateY(-2px);
+  box-shadow:0 15px 30px rgba(79,70,229,.30);
+}
+
+.meta-direct-composer button:disabled{
+  cursor:not-allowed;
+  opacity:.48;
+  box-shadow:none;
+}
+
+/* Порожній стан */
+
+.meta-direct-empty{
+  width:100%;
+  min-height:130px;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  color:#94a3b8;
+  text-align:center;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.5;
+}
+
+.meta-direct-sidebar .meta-direct-empty{
+  min-height:220px;
+}
+
+/* Завантаження */
+
+.meta-direct-loading{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:160px;
+  color:#64748b;
+  font-size:13px;
+  font-weight:850;
+}
+
+.meta-direct-loading::before{
+  content:"";
+  width:18px;
+  height:18px;
+  border:3px solid #dbeafe;
+  border-top-color:#4f46e5;
+  border-radius:50%;
+  animation:metaDirectSpin .75s linear infinite;
+}
+
+@keyframes metaDirectSpin{
+  to{
+    transform:rotate(360deg);
+  }
+}
+
+@keyframes metaDirectMessageIn{
+  from{
+    opacity:0;
+    transform:translateY(7px) scale(.98);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+}
+
+/* Адаптивність */
+
+@media (max-width:1100px){
+  .meta-direct-layout{
+    grid-template-columns:310px minmax(0, 1fr);
+  }
+
+  .meta-direct-bubble{
+    max-width:82%;
+  }
+}
+
+@media (max-width:820px){
+  .meta-direct-toolbar{
+    grid-template-columns:1fr;
+  }
+
+  .meta-direct-layout{
+    grid-template-columns:1fr;
+    height:auto;
+    min-height:0;
+    overflow:visible;
+  }
+
+  .meta-direct-sidebar{
+    max-height:320px;
+    border-right:none;
+    border-bottom:1px solid var(--direct-line);
+  }
+
+  .meta-direct-chat{
+    min-height:570px;
+  }
+
+  .meta-direct-messages{
+    min-height:390px;
+  }
+}
+
+@media (max-width:560px){
+  .meta-direct-layout{
+    border-radius:18px;
+  }
+
+  .meta-direct-chat__head,
+  .meta-direct-sidebar__head{
+    padding:12px 14px;
+  }
+
+  .meta-direct-messages{
+    padding:16px 11px;
+  }
+
+  .meta-direct-bubble{
+    max-width:91%;
+  }
+
+  .meta-direct-composer{
+    grid-template-columns:1fr;
+  }
+
+  .meta-direct-composer button{
+    width:100%;
+  }
+}
+
+.meta-direct-message-status{
+  display:inline-block;
+  min-width:12px;
+  font-size:11px;
+  font-weight:950;
+  letter-spacing:-3px;
+}
+
+.meta-direct-message-status.is-read{
+  color:#d9efff;
+  text-shadow:0 0 8px rgba(255,255,255,.35);
+}
