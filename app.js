@@ -11995,6 +11995,86 @@ metaDirectComposer?.addEventListener(
   sendMetaDirectMessage
 );
 
+metaDirectAttachBtn?.addEventListener(
+  "click",
+  () => {
+    metaDirectImageInput?.click();
+  }
+);
+
+
+metaDirectImageInput?.addEventListener(
+  "change",
+  () => {
+    const file =
+      metaDirectImageInput.files?.[0];
+
+    if (file) {
+      setMetaDirectImage(file);
+    }
+  }
+);
+
+
+metaDirectImageRemoveBtn?.addEventListener(
+  "click",
+  clearMetaDirectImage
+);
+
+
+metaDirectMessageInput?.addEventListener(
+  "paste",
+  event => {
+    const items = Array.from(
+      event.clipboardData?.items || []
+    );
+
+    const imageItem = items.find(
+      item =>
+        String(item.type || "")
+          .startsWith("image/")
+    );
+
+    if (!imageItem) {
+      return;
+    }
+
+    const file =
+      imageItem.getAsFile();
+
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const extension =
+      file.type === "image/jpeg"
+        ? "jpg"
+        : file.type === "image/gif"
+          ? "gif"
+          : "png";
+
+    const renamedFile = new File(
+      [file],
+      `clipboard-${Date.now()}.${extension}`,
+      {
+        type: file.type
+      }
+    );
+
+    setMetaDirectImage(
+      renamedFile
+    );
+  }
+);
+
+
+metaDirectMessageInput?.addEventListener(
+  "input",
+  resizeMetaDirectInput
+);
+
 
 metaDirectMessageInput?.addEventListener(
   "keydown",
