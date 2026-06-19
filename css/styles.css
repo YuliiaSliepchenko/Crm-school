@@ -6382,3 +6382,182 @@ body.gws-lock .gws-hub *{
   color:#d9efff;
   text-shadow:0 0 8px rgba(255,255,255,.35);
 }
+
+/* =========================================================
+   META DIRECT COMPOSER — COMPACT + IMAGES
+   ========================================================= */
+
+.meta-direct-messages{
+  padding-bottom:32px;
+  scroll-padding-bottom:32px;
+}
+
+.meta-direct-composer{
+  grid-template-columns:
+    44px
+    minmax(0, 1fr)
+    auto;
+  align-items:end;
+  gap:8px;
+  padding:10px 12px;
+}
+
+.meta-direct-composer textarea{
+  min-height:44px;
+  height:44px;
+  max-height:120px;
+  padding:11px 13px;
+  border-radius:14px;
+  line-height:20px;
+  overflow-y:auto;
+}
+
+.meta-direct-composer
+.meta-direct-attach-btn{
+  width:44px;
+  min-width:44px;
+  min-height:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid #dbe4ef;
+  border-radius:14px;
+  background:#f8fafc;
+  color:#475569;
+  font-size:19px;
+  box-shadow:none;
+  cursor:pointer;
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    background .18s ease,
+    color .18s ease;
+}
+
+.meta-direct-composer
+.meta-direct-attach-btn:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:#818cf8;
+  background:#eef2ff;
+  color:#4f46e5;
+  box-shadow:none;
+}
+
+.meta-direct-composer
+.meta-direct-attach-btn:disabled{
+  cursor:not-allowed;
+  opacity:.45;
+  box-shadow:none;
+}
+
+#metaDirectSendBtn{
+  min-height:44px;
+  height:44px;
+  padding:10px 17px;
+  border-radius:14px;
+}
+
+.meta-direct-upload-preview{
+  grid-column:1 / -1;
+  display:grid;
+  grid-template-columns:58px minmax(0, 1fr) 32px;
+  align-items:center;
+  gap:11px;
+  padding:9px 10px;
+  border:1px solid #c7d2fe;
+  border-radius:15px;
+  background:
+    linear-gradient(
+      135deg,
+      #f5f3ff,
+      #eff6ff
+    );
+  box-shadow:
+    0 8px 20px rgba(79,70,229,.08);
+}
+
+.meta-direct-upload-preview[hidden]{
+  display:none;
+}
+
+.meta-direct-upload-preview img{
+  width:58px;
+  height:58px;
+  display:block;
+  object-fit:cover;
+  border-radius:12px;
+  background:#e2e8f0;
+}
+
+.meta-direct-upload-preview__info{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.meta-direct-upload-preview__info strong{
+  overflow:hidden;
+  color:#172033;
+  font-size:12px;
+  font-weight:900;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.meta-direct-upload-preview__info small{
+  color:#64748b;
+  font-size:10px;
+  font-weight:750;
+}
+
+.meta-direct-composer
+.meta-direct-upload-remove{
+  width:30px;
+  height:30px;
+  min-width:30px;
+  min-height:30px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:0;
+  border-radius:9px;
+  background:rgba(255,255,255,.8);
+  color:#64748b;
+  font-size:21px;
+  line-height:1;
+  box-shadow:none;
+  cursor:pointer;
+}
+
+.meta-direct-composer
+.meta-direct-upload-remove:hover{
+  transform:none;
+  background:#fee2e2;
+  color:#dc2626;
+  box-shadow:none;
+}
+
+@media (max-width:560px){
+  .meta-direct-composer{
+    grid-template-columns:
+      42px
+      minmax(0, 1fr);
+  }
+
+  .meta-direct-composer
+  .meta-direct-attach-btn{
+    width:42px;
+    min-width:42px;
+  }
+
+  #metaDirectSendBtn{
+    grid-column:1 / -1;
+    width:100%;
+  }
+
+  .meta-direct-upload-preview{
+    grid-column:1 / -1;
+  }
+}

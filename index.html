@@ -1382,25 +1382,73 @@
       </div>
 
       <form
-        id="metaDirectComposer"
-        class="meta-direct-composer"
-      >
-        <textarea
-          id="metaDirectMessageInput"
-          rows="2"
-          placeholder="Напишіть відповідь клієнту..."
-          disabled
-        ></textarea>
+  id="metaDirectComposer"
+  class="meta-direct-composer"
+>
+  <div
+    id="metaDirectImagePreview"
+    class="meta-direct-upload-preview"
+    hidden
+  >
+    <img
+      id="metaDirectImagePreviewImg"
+      src=""
+      alt="Попередній перегляд"
+    >
 
-        <button
-          id="metaDirectSendBtn"
-          class="btn btn-primary"
-          type="submit"
-          disabled
-        >
-          Надіслати ➤
-        </button>
-      </form>
+    <div class="meta-direct-upload-preview__info">
+      <strong id="metaDirectImagePreviewName">
+        Фото
+      </strong>
+
+      <small id="metaDirectImagePreviewSize">
+        Готове до надсилання
+      </small>
+    </div>
+
+    <button
+      id="metaDirectImageRemoveBtn"
+      class="meta-direct-upload-remove"
+      type="button"
+      title="Прибрати фото"
+    >
+      ×
+    </button>
+  </div>
+
+  <input
+    id="metaDirectImageInput"
+    type="file"
+    accept="image/jpeg,image/png,image/gif"
+    hidden
+  >
+
+  <button
+    id="metaDirectAttachBtn"
+    class="meta-direct-attach-btn"
+    type="button"
+    title="Додати фотографію"
+    disabled
+  >
+    📎
+  </button>
+
+  <textarea
+    id="metaDirectMessageInput"
+    rows="1"
+    placeholder="Напишіть відповідь або вставте фото Ctrl+V..."
+    disabled
+  ></textarea>
+
+  <button
+    id="metaDirectSendBtn"
+    class="btn btn-primary"
+    type="submit"
+    disabled
+  >
+    Надіслати ➤
+  </button>
+</form>
 
     </section>
   </div>

@@ -6686,6 +6686,86 @@ function renderMetaFacebookPage() {
   `;
 }
 
+metaDirectAttachBtn?.addEventListener(
+  "click",
+  () => {
+    metaDirectImageInput?.click();
+  }
+);
+
+
+metaDirectImageInput?.addEventListener(
+  "change",
+  () => {
+    const file =
+      metaDirectImageInput.files?.[0];
+
+    if (file) {
+      setMetaDirectImage(file);
+    }
+  }
+);
+
+
+metaDirectImageRemoveBtn?.addEventListener(
+  "click",
+  clearMetaDirectImage
+);
+
+
+metaDirectMessageInput?.addEventListener(
+  "paste",
+  event => {
+    const items = Array.from(
+      event.clipboardData?.items || []
+    );
+
+    const imageItem = items.find(
+      item =>
+        String(item.type || "")
+          .startsWith("image/")
+    );
+
+    if (!imageItem) {
+      return;
+    }
+
+    const file =
+      imageItem.getAsFile();
+
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const extension =
+      file.type === "image/jpeg"
+        ? "jpg"
+        : file.type === "image/gif"
+          ? "gif"
+          : "png";
+
+    const renamedFile = new File(
+      [file],
+      `clipboard-${Date.now()}.${extension}`,
+      {
+        type: file.type
+      }
+    );
+
+    setMetaDirectImage(
+      renamedFile
+    );
+  }
+);
+
+
+metaDirectMessageInput?.addEventListener(
+  "input",
+  resizeMetaDirectInput
+);
+
 
 function renderMetaFacebookPosts() {
   if (!metaFacebookPostsList) {
@@ -10255,6 +10335,41 @@ const metaDirectSendBtn =
     "metaDirectSendBtn"
   );
 
+const metaDirectAttachBtn =
+  document.getElementById(
+    "metaDirectAttachBtn"
+  );
+
+const metaDirectImageInput =
+  document.getElementById(
+    "metaDirectImageInput"
+  );
+
+const metaDirectImagePreview =
+  document.getElementById(
+    "metaDirectImagePreview"
+  );
+
+const metaDirectImagePreviewImg =
+  document.getElementById(
+    "metaDirectImagePreviewImg"
+  );
+
+const metaDirectImagePreviewName =
+  document.getElementById(
+    "metaDirectImagePreviewName"
+  );
+
+const metaDirectImagePreviewSize =
+  document.getElementById(
+    "metaDirectImagePreviewSize"
+  );
+
+const metaDirectImageRemoveBtn =
+  document.getElementById(
+    "metaDirectImageRemoveBtn"
+  );
+
 
 const metaDirectState = {
   initialized: false,
@@ -10270,6 +10385,8 @@ const metaDirectState = {
   sending: false,
 
   pollingTimer: null,
+  pendingImage: null,
+  pendingImageUrl: null,
 
   conversationsSignature: null,
   messagesSignature: null
@@ -10495,17 +10612,23 @@ async function metaDirectRequest(
   url,
   options = {}
 ) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...(options.body
+  const isFormData =
+  options.body instanceof FormData;
+
+const response = await fetch(url, {
+  ...options,
+  headers: {
+    ...(
+      options.body && !isFormData
         ? {
-            "Content-Type": "application/json"
+            "Content-Type":
+              "application/json"
           }
-        : {}),
-      ...(options.headers || {})
-    }
-  });
+        : {}
+    ),
+    ...(options.headers || {})
+  }
+});
 
   let data = {};
 
@@ -10529,6 +10652,130 @@ async function metaDirectRequest(
   }
 
   return data;
+}
+
+function metaDirectFormatBytes(bytes) {
+  const size = Number(bytes || 0);
+
+  if (size < 1024) {
+    return `${size} Б`;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(
+      size / 1024
+    ).toFixed(1)} КБ`;
+  }
+
+  return `${(
+    size / 1024 / 1024
+  ).toFixed(1)} МБ`;
+}
+
+
+function clearMetaDirectImage() {
+  if (metaDirectState.pendingImageUrl) {
+    URL.revokeObjectURL(
+      metaDirectState.pendingImageUrl
+    );
+  }
+
+  metaDirectState.pendingImage = null;
+  metaDirectState.pendingImageUrl = null;
+
+  if (metaDirectImageInput) {
+    metaDirectImageInput.value = "";
+  }
+
+  if (metaDirectImagePreviewImg) {
+    metaDirectImagePreviewImg.src = "";
+  }
+
+  if (metaDirectImagePreview) {
+    metaDirectImagePreview.hidden = true;
+  }
+}
+
+
+function setMetaDirectImage(file) {
+  if (!file) {
+    return;
+  }
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/gif"
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    setMetaDirectStatus(
+      "Підтримуються тільки JPG, PNG та GIF.",
+      "error"
+    );
+
+    return;
+  }
+
+  if (file.size > 8 * 1024 * 1024) {
+    setMetaDirectStatus(
+      "Фото завелике. Максимум — 8 МБ.",
+      "error"
+    );
+
+    return;
+  }
+
+  clearMetaDirectImage();
+
+  const previewUrl =
+    URL.createObjectURL(file);
+
+  metaDirectState.pendingImage = file;
+  metaDirectState.pendingImageUrl =
+    previewUrl;
+
+  if (metaDirectImagePreviewImg) {
+    metaDirectImagePreviewImg.src =
+      previewUrl;
+  }
+
+  if (metaDirectImagePreviewName) {
+    metaDirectImagePreviewName.textContent =
+      file.name || "Вставлене фото";
+  }
+
+  if (metaDirectImagePreviewSize) {
+    metaDirectImagePreviewSize.textContent =
+      `${metaDirectFormatBytes(file.size)} • готове до надсилання`;
+  }
+
+  if (metaDirectImagePreview) {
+    metaDirectImagePreview.hidden = false;
+  }
+
+  setMetaDirectStatus(
+    "Фото готове до надсилання.",
+    "success"
+  );
+}
+
+
+function resizeMetaDirectInput() {
+  if (!metaDirectMessageInput) {
+    return;
+  }
+
+  metaDirectMessageInput.style.height =
+    "44px";
+
+  const nextHeight = Math.min(
+    metaDirectMessageInput.scrollHeight,
+    120
+  );
+
+  metaDirectMessageInput.style.height =
+    `${Math.max(44, nextHeight)}px`;
 }
 
 
@@ -11245,6 +11492,10 @@ async function openMetaDirectConversation(
     metaDirectSendBtn.disabled = false;
   }
 
+  if (metaDirectAttachBtn) {
+  metaDirectAttachBtn.disabled = false;
+  }
+
   await loadMetaDirectMessages({
     silent: false
   });
@@ -11277,6 +11528,13 @@ function resetMetaDirectConversation() {
   if (metaDirectSendBtn) {
     metaDirectSendBtn.disabled = true;
   }
+
+  if (metaDirectAttachBtn) {
+  metaDirectAttachBtn.disabled = true;
+  }
+
+clearMetaDirectImage();
+resizeMetaDirectInput();
 }
 
 
@@ -11463,7 +11721,10 @@ async function sendMetaDirectMessage(
       ?.value
       .trim() || "";
 
-  if (!message) {
+  const pendingImage =
+    metaDirectState.pendingImage;
+
+  if (!message && !pendingImage) {
     metaDirectMessageInput?.focus();
     return;
   }
@@ -11480,31 +11741,76 @@ async function sendMetaDirectMessage(
       "Надсилаємо...";
   }
 
+  if (metaDirectAttachBtn) {
+    metaDirectAttachBtn.disabled = true;
+  }
+
   if (metaDirectMessageInput) {
     metaDirectMessageInput.disabled = true;
   }
 
   try {
-    await metaDirectRequest(
-      `${META_BACKEND_URL}` +
-      `/api/meta/direct/send`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          page_id: pageId,
-          participant_id:
-            String(participantId),
-          message
-        })
-      }
-    );
+    if (pendingImage) {
+      const imageForm =
+        new FormData();
+
+      imageForm.append(
+        "page_id",
+        pageId
+      );
+
+      imageForm.append(
+        "participant_id",
+        String(participantId)
+      );
+
+      imageForm.append(
+        "image",
+        pendingImage,
+        pendingImage.name ||
+          "clipboard-image.png"
+      );
+
+      await metaDirectRequest(
+        `${META_BACKEND_URL}` +
+        `/api/meta/direct/send-image`,
+        {
+          method: "POST",
+          body: imageForm
+        }
+      );
+
+      clearMetaDirectImage();
+    }
+
+    if (message) {
+      await metaDirectRequest(
+        `${META_BACKEND_URL}` +
+        `/api/meta/direct/send`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            page_id: pageId,
+            participant_id:
+              String(participantId),
+            message
+          })
+        }
+      );
+    }
 
     if (metaDirectMessageInput) {
       metaDirectMessageInput.value = "";
     }
 
+    resizeMetaDirectInput();
+
     setMetaDirectStatus(
-      "Повідомлення успішно надіслано.",
+      pendingImage && message
+        ? "Фото і повідомлення надіслано."
+        : pendingImage
+          ? "Фото успішно надіслано."
+          : "Повідомлення успішно надіслано.",
       "success"
     );
 
@@ -11535,6 +11841,10 @@ async function sendMetaDirectMessage(
       metaDirectSendBtn.disabled = false;
       metaDirectSendBtn.textContent =
         oldButtonText;
+    }
+
+    if (metaDirectAttachBtn) {
+      metaDirectAttachBtn.disabled = false;
     }
 
     if (metaDirectMessageInput) {
