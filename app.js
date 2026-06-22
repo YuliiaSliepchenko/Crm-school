@@ -6357,6 +6357,10 @@ function setMetaHubTab(tabName) {
   if (tabName === "direct") {
     initMetaDirect();
   }
+
+  if (tabName === "instagram-direct") {
+  initMetaInstagramDirect();
+  }
 }
 
 function metaFacebookCurrentPage() {
@@ -12038,5 +12042,712 @@ metaHub?.addEventListener(
     }
   }
 );
+
+/* =========================================================
+   META INSTAGRAM DIRECT
+   ========================================================= */
+
+const metaIgDirectRefreshBtn =
+  document.getElementById("metaIgDirectRefreshBtn");
+
+const metaIgDirectAccountSelect =
+  document.getElementById("metaIgDirectAccountSelect");
+
+const metaIgDirectStatus =
+  document.getElementById("metaIgDirectStatus");
+
+const metaIgDirectConversationCount =
+  document.getElementById("metaIgDirectConversationCount");
+
+const metaIgDirectConversations =
+  document.getElementById("metaIgDirectConversations");
+
+const metaIgDirectChatHeader =
+  document.getElementById("metaIgDirectChatHeader");
+
+const metaIgDirectMessages =
+  document.getElementById("metaIgDirectMessages");
+
+const metaIgDirectComposer =
+  document.getElementById("metaIgDirectComposer");
+
+const metaIgDirectMessageInput =
+  document.getElementById("metaIgDirectMessageInput");
+
+const metaIgDirectSendBtn =
+  document.getElementById("metaIgDirectSendBtn");
+
+const metaIgDirectState = {
+  initialized: false,
+  accounts: [],
+  conversations: [],
+  messages: [],
+  activeConversation: null,
+  loading: false,
+  sending: false
+};
+
+function metaIgDirectEscape(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function metaIgDirectSafeUrl(value) {
+  const raw = String(value || "").trim();
+
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    const url = new URL(raw);
+
+    if (url.protocol === "https:" || url.protocol === "http:") {
+      return url.href;
+    }
+  } catch (error) {
+    return "";
+  }
+
+  return "";
+}
+
+function metaIgDirectTime(value) {
+  if (!value) return "";
+
+  const raw = Number(value);
+  const date =
+    raw > 100000000000
+      ? new Date(raw)
+      : new Date(raw * 1000);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleTimeString("uk-UA", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function metaIgDirectSetStatus(text, type = "info") {
+  if (!metaIgDirectStatus) return;
+
+  metaIgDirectStatus.textContent = text || "";
+
+  metaIgDirectStatus.classList.remove(
+    "is-success",
+    "is-error"
+  );
+
+  if (type === "success") {
+    metaIgDirectStatus.classList.add("is-success");
+  }
+
+  if (type === "error") {
+    metaIgDirectStatus.classList.add("is-error");
+  }
+}
+
+async function metaIgDirectRequest(url, options = {}) {
+  const requestOptions = { ...options };
+
+  if (requestOptions.body && !(requestOptions.body instanceof FormData)) {
+    requestOptions.headers = {
+      "Content-Type": "application/json",
+      ...(requestOptions.headers || {})
+    };
+  }
+
+  const response = await fetch(url, requestOptions);
+
+  let data;
+
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error("Railway повернув некоректну відповідь.");
+  }
+
+  if (!response.ok || data.success === false) {
+    const metaError =
+      data?.details?.error?.message ||
+      data?.error ||
+      "Instagram Direct помилка.";
+
+    throw new Error(metaError);
+  }
+
+  return data;
+}
+
+function metaIgDirectCurrentAccount() {
+  const instagramId =
+    metaIgDirectAccountSelect?.value || "";
+
+  return (
+    metaIgDirectState.accounts.find(
+      account => String(account.id) === String(instagramId)
+    ) || null
+  );
+}
+
+function metaIgDirectInitials(name) {
+  const clean = String(name || "IG").trim();
+
+  return clean
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0] || "")
+    .join("")
+    .toUpperCase();
+}
+
+function renderMetaIgDirectAccounts() {
+  if (!metaIgDirectAccountSelect) return;
+
+  const previousValue =
+    metaIgDirectAccountSelect.value || "";
+
+  if (!metaIgDirectState.accounts.length) {
+    metaIgDirectAccountSelect.innerHTML = `
+      <option value="">
+        Instagram-акаунтів не знайдено
+      </option>
+    `;
+
+    return;
+  }
+
+  metaIgDirectAccountSelect.innerHTML =
+    metaIgDirectState.accounts
+      .map(account => {
+        const title =
+          account.username ||
+          account.name ||
+          account.id;
+
+        return `
+          <option value="${metaIgDirectEscape(account.id)}">
+            @${metaIgDirectEscape(title)}
+          </option>
+        `;
+      })
+      .join("");
+
+  const exists =
+    metaIgDirectState.accounts.some(
+      account => String(account.id) === String(previousValue)
+    );
+
+  if (exists) {
+    metaIgDirectAccountSelect.value = previousValue;
+  }
+}
+
+function renderMetaIgDirectConversations() {
+  if (!metaIgDirectConversations) return;
+
+  if (metaIgDirectConversationCount) {
+    metaIgDirectConversationCount.textContent =
+      String(metaIgDirectState.conversations.length);
+  }
+
+  if (!metaIgDirectState.conversations.length) {
+    metaIgDirectConversations.innerHTML = `
+      <div class="meta-direct-empty">
+        Instagram діалогів поки немає.<br>
+        Напишіть у Direct — і чат з’явиться тут.
+      </div>
+    `;
+    return;
+  }
+
+  const activeId =
+    metaIgDirectState.activeConversation?.participant_id || "";
+
+  metaIgDirectConversations.innerHTML =
+    metaIgDirectState.conversations
+      .map(conversation => {
+        const participantId =
+          String(conversation.participant_id || "");
+
+        const name =
+          conversation.participant_name ||
+          `Instagram клієнт ${participantId.slice(-6)}`;
+
+        const active =
+          String(activeId) === String(participantId);
+
+        const unread =
+          Number(conversation.unread_count || 0);
+
+        const lastMessage =
+          conversation.last_message || "—";
+
+        return `
+          <button
+            type="button"
+            class="meta-direct-conversation ${active ? "is-active" : ""}"
+            data-meta-ig-participant="${metaIgDirectEscape(participantId)}"
+          >
+            <div class="meta-direct-conversation__avatar meta-ig-direct-avatar">
+  ${
+    metaIgDirectSafeUrl(conversation.participant_avatar)
+      ? `
+        <img
+          src="${metaIgDirectEscape(metaIgDirectSafeUrl(conversation.participant_avatar))}"
+          alt=""
+          loading="lazy"
+        >
+      `
+      : metaIgDirectEscape(metaIgDirectInitials(name))
+  }
+</div>
+
+            <div class="meta-direct-conversation__body">
+              <div class="meta-direct-conversation__top">
+                <div class="meta-direct-conversation__name">
+                  ${metaIgDirectEscape(name)}
+                </div>
+
+                <div class="meta-direct-conversation__time">
+                  ${metaIgDirectEscape(
+                    metaIgDirectTime(conversation.last_message_at)
+                  )}
+                </div>
+              </div>
+
+              <div class="meta-direct-conversation__last">
+                ${metaIgDirectEscape(lastMessage)}
+              </div>
+            </div>
+
+            ${
+              unread
+                ? `<span class="meta-direct-unread">${unread}</span>`
+                : ""
+            }
+          </button>
+        `;
+      })
+      .join("");
+}
+
+function renderMetaIgDirectHeader() {
+  if (!metaIgDirectChatHeader) return;
+
+  const conversation =
+    metaIgDirectState.activeConversation;
+
+  if (!conversation) {
+    metaIgDirectChatHeader.innerHTML = `
+      <div class="meta-direct-chat__avatar">
+        🌈
+      </div>
+
+      <div class="meta-direct-chat__person">
+        <strong>Оберіть Instagram діалог</strong>
+        <small>Тут з’явиться клієнт</small>
+      </div>
+    `;
+    return;
+  }
+
+  const participantId =
+    String(conversation.participant_id || "");
+
+  const name =
+    conversation.participant_name ||
+    `Instagram клієнт ${participantId.slice(-6)}`;
+
+  metaIgDirectChatHeader.innerHTML = `
+    <div class="meta-direct-chat__avatar meta-ig-direct-avatar">
+  ${
+    metaIgDirectSafeUrl(conversation.participant_avatar)
+      ? `
+        <img
+          src="${metaIgDirectEscape(metaIgDirectSafeUrl(conversation.participant_avatar))}"
+          alt=""
+          loading="lazy"
+        >
+      `
+      : metaIgDirectEscape(metaIgDirectInitials(name))
+  }
+</div>
+
+    <div class="meta-direct-chat__person">
+      <strong>${metaIgDirectEscape(name)}</strong>
+      <small>Instagram • ID: ${metaIgDirectEscape(participantId)}</small>
+    </div>
+  `;
+}
+
+function renderMetaIgDirectMessages() {
+  if (!metaIgDirectMessages) return;
+
+  if (!metaIgDirectState.messages.length) {
+    metaIgDirectMessages.innerHTML = `
+      <div class="meta-direct-empty">
+        У цьому Instagram діалозі повідомлень поки немає.
+      </div>
+    `;
+    return;
+  }
+
+  metaIgDirectMessages.innerHTML =
+    metaIgDirectState.messages
+      .map(message => {
+        const outgoing =
+          String(message.direction || "") === "out";
+
+        const status =
+          String(message.status || "").toLowerCase();
+
+        const check =
+          status === "read" || status === "seen"
+            ? "✓✓"
+            : "✓";
+
+        return `
+          <div class="meta-direct-message-row ${outgoing ? "is-out" : "is-in"}">
+            <div class="meta-direct-bubble">
+              <div class="meta-direct-bubble__text">
+                ${metaIgDirectEscape(message.text || "")}
+              </div>
+
+              <div class="meta-direct-bubble__meta">
+                <span>${metaIgDirectEscape(metaIgDirectTime(message.timestamp))}</span>
+
+                ${
+                  outgoing
+                    ? `<span class="meta-direct-message-status">${check}</span>`
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+  requestAnimationFrame(() => {
+    metaIgDirectMessages.scrollTop =
+      metaIgDirectMessages.scrollHeight;
+  });
+}
+
+async function loadMetaIgDirectAccounts() {
+  const data = await metaIgDirectRequest(
+    `${META_BACKEND_URL}/api/meta/instagram/accounts?t=${Date.now()}`
+  );
+
+  metaIgDirectState.accounts =
+    Array.isArray(data.accounts)
+      ? data.accounts
+      : [];
+
+  renderMetaIgDirectAccounts();
+}
+
+async function loadMetaIgDirectConversations() {
+  const instagramId =
+    metaIgDirectAccountSelect?.value || "";
+
+  if (!instagramId) {
+    metaIgDirectSetStatus(
+      "Оберіть Instagram-акаунт.",
+      "error"
+    );
+    return;
+  }
+
+  metaIgDirectSetStatus(
+    "Завантажуємо Instagram діалоги..."
+  );
+
+  const query = new URLSearchParams({
+    instagram_id: instagramId,
+    limit: "200",
+    t: String(Date.now())
+  });
+
+  const data = await metaIgDirectRequest(
+    `${META_BACKEND_URL}/api/meta/instagram/direct/conversations?${query}`
+  );
+
+  metaIgDirectState.conversations =
+    Array.isArray(data.conversations)
+      ? data.conversations
+      : [];
+
+  const previousId =
+    metaIgDirectState.activeConversation?.participant_id || "";
+
+  metaIgDirectState.activeConversation =
+    metaIgDirectState.conversations.find(
+      item => String(item.participant_id) === String(previousId)
+    ) || null;
+
+  renderMetaIgDirectConversations();
+  renderMetaIgDirectHeader();
+
+  metaIgDirectSetStatus(
+    `Instagram Direct підключено. Діалогів: ${metaIgDirectState.conversations.length}`,
+    "success"
+  );
+
+  if (!metaIgDirectState.activeConversation && metaIgDirectState.conversations[0]) {
+    await openMetaIgDirectConversation(metaIgDirectState.conversations[0]);
+  } else if (metaIgDirectState.activeConversation) {
+    await loadMetaIgDirectMessages();
+  }
+}
+
+async function loadMetaIgDirectMessages() {
+  const instagramId =
+    metaIgDirectAccountSelect?.value || "";
+
+  const participantId =
+    metaIgDirectState.activeConversation?.participant_id || "";
+
+  if (!instagramId || !participantId) return;
+
+  metaIgDirectMessages.innerHTML = `
+    <div class="meta-direct-loading">
+      Завантажуємо Instagram повідомлення...
+    </div>
+  `;
+
+  const query = new URLSearchParams({
+    instagram_id: instagramId,
+    participant_id: String(participantId),
+    limit: "300",
+    t: String(Date.now())
+  });
+
+  const data = await metaIgDirectRequest(
+    `${META_BACKEND_URL}/api/meta/instagram/direct/messages?${query}`
+  );
+
+  metaIgDirectState.messages =
+    Array.isArray(data.messages)
+      ? data.messages
+      : [];
+
+  renderMetaIgDirectMessages();
+}
+
+async function markMetaIgDirectRead() {
+  const instagramId =
+    metaIgDirectAccountSelect?.value || "";
+
+  const participantId =
+    metaIgDirectState.activeConversation?.participant_id || "";
+
+  if (!instagramId || !participantId) return;
+
+  const query = new URLSearchParams({
+    instagram_id: instagramId,
+    participant_id: String(participantId)
+  });
+
+  try {
+    await metaIgDirectRequest(
+      `${META_BACKEND_URL}/api/meta/instagram/direct/read?${query}`,
+      { method: "POST" }
+    );
+
+    metaIgDirectState.activeConversation.unread_count = 0;
+    renderMetaIgDirectConversations();
+
+  } catch (error) {
+    console.warn("Instagram Direct read error:", error);
+  }
+}
+
+async function openMetaIgDirectConversation(conversation) {
+  metaIgDirectState.activeConversation = conversation;
+
+  renderMetaIgDirectConversations();
+  renderMetaIgDirectHeader();
+
+  if (metaIgDirectMessageInput) {
+    metaIgDirectMessageInput.disabled = false;
+  }
+
+  if (metaIgDirectSendBtn) {
+    metaIgDirectSendBtn.disabled = false;
+  }
+
+  await loadMetaIgDirectMessages();
+  await markMetaIgDirectRead();
+
+  metaIgDirectMessageInput?.focus();
+}
+
+async function sendMetaIgDirectMessage(event) {
+  event?.preventDefault();
+
+  if (
+    metaIgDirectState.sending ||
+    !metaIgDirectState.activeConversation
+  ) {
+    return;
+  }
+
+  const instagramId =
+    metaIgDirectAccountSelect?.value || "";
+
+  const participantId =
+    metaIgDirectState.activeConversation.participant_id || "";
+
+  const message =
+    metaIgDirectMessageInput?.value.trim() || "";
+
+  if (!message) {
+    metaIgDirectMessageInput?.focus();
+    return;
+  }
+
+  metaIgDirectState.sending = true;
+
+  const oldText =
+    metaIgDirectSendBtn?.textContent || "Надіслати ➤";
+
+  if (metaIgDirectSendBtn) {
+    metaIgDirectSendBtn.disabled = true;
+    metaIgDirectSendBtn.textContent = "Надсилаємо...";
+  }
+
+  if (metaIgDirectMessageInput) {
+    metaIgDirectMessageInput.disabled = true;
+  }
+
+  try {
+    await metaIgDirectRequest(
+      `${META_BACKEND_URL}/api/meta/instagram/direct/send`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          instagram_id: instagramId,
+          participant_id: String(participantId),
+          message
+        })
+      }
+    );
+
+    metaIgDirectMessageInput.value = "";
+
+    metaIgDirectSetStatus(
+      "Instagram Direct повідомлення надіслано.",
+      "success"
+    );
+
+    await loadMetaIgDirectMessages();
+    await loadMetaIgDirectConversations();
+
+  } catch (error) {
+    console.error("Instagram Direct send error:", error);
+
+    metaIgDirectSetStatus(
+      error.message || "Не вдалося надіслати Instagram повідомлення.",
+      "error"
+    );
+
+  } finally {
+    metaIgDirectState.sending = false;
+
+    if (metaIgDirectSendBtn) {
+      metaIgDirectSendBtn.disabled = false;
+      metaIgDirectSendBtn.textContent = oldText;
+    }
+
+    if (metaIgDirectMessageInput) {
+      metaIgDirectMessageInput.disabled = false;
+      metaIgDirectMessageInput.focus();
+    }
+  }
+}
+
+async function initMetaInstagramDirect() {
+  if (metaIgDirectState.loading) return;
+
+  metaIgDirectState.loading = true;
+
+  try {
+    await loadMetaIgDirectAccounts();
+    await loadMetaIgDirectConversations();
+
+  } catch (error) {
+    console.error("Instagram Direct init error:", error);
+
+    metaIgDirectSetStatus(
+      error.message || "Не вдалося завантажити Instagram Direct.",
+      "error"
+    );
+
+  } finally {
+    metaIgDirectState.loading = false;
+    metaIgDirectState.initialized = true;
+  }
+}
+
+metaIgDirectRefreshBtn?.addEventListener("click", () => {
+  initMetaInstagramDirect();
+});
+
+metaIgDirectAccountSelect?.addEventListener("change", async () => {
+  metaIgDirectState.activeConversation = null;
+  metaIgDirectState.messages = [];
+
+  renderMetaIgDirectHeader();
+
+  if (metaIgDirectMessages) {
+    metaIgDirectMessages.innerHTML = `
+      <div class="meta-direct-empty">
+        Оберіть Instagram діалог.
+      </div>
+    `;
+  }
+
+  await loadMetaIgDirectConversations();
+});
+
+metaIgDirectConversations?.addEventListener("click", event => {
+  const button =
+    event.target.closest("[data-meta-ig-participant]");
+
+  if (!button) return;
+
+  const participantId =
+    button.dataset.metaIgParticipant || "";
+
+  const conversation =
+    metaIgDirectState.conversations.find(
+      item => String(item.participant_id) === String(participantId)
+    );
+
+  if (conversation) {
+    openMetaIgDirectConversation(conversation);
+  }
+});
+
+metaIgDirectComposer?.addEventListener(
+  "submit",
+  sendMetaIgDirectMessage
+);
+
+metaIgDirectMessageInput?.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendMetaIgDirectMessage(event);
+  }
+});
 
 })();

@@ -905,6 +905,14 @@
           </div>
         </button>
 
+        <button class="gws-tab gws-tab--instagram-direct" type="button" data-meta-tab="instagram-direct">
+  <span>🌈</span>
+  <div>
+    <b>Instagram Direct</b>
+    <small>Чати Instagram</small>
+  </div>
+</button>
+
         <button class="gws-tab" type="button" data-meta-tab="settings">
           <span>⚙️</span>
           <div>
@@ -1389,6 +1397,122 @@
   </button>
 </form>
 
+    </section>
+  </div>
+</section>
+
+<section class="gws-panel meta-ig-direct" data-meta-panel="instagram-direct">
+  <div class="gws-panel__head">
+    <div>
+      <h3>Instagram Direct</h3>
+      <p>
+        Вхідні повідомлення з Instagram та відповіді прямо з CRM.
+      </p>
+    </div>
+
+    <div class="gws-actions-row">
+      <button
+        id="metaIgDirectRefreshBtn"
+        class="btn btn-primary"
+        type="button"
+      >
+        🔄 Оновити Instagram Direct
+      </button>
+    </div>
+  </div>
+
+  <div class="meta-direct-toolbar">
+    <label class="meta-direct-field">
+      <span>Instagram-акаунт</span>
+
+      <select id="metaIgDirectAccountSelect">
+        <option value="">
+          Оберіть Instagram-акаунт
+        </option>
+      </select>
+    </label>
+
+    <div
+      id="metaIgDirectStatus"
+      class="gws-status-line"
+    >
+      Оберіть Instagram-акаунт, щоб завантажити діалоги.
+    </div>
+  </div>
+
+  <div class="meta-direct-layout">
+
+    <aside class="meta-direct-sidebar">
+      <div class="meta-direct-sidebar__head">
+        <div>
+          <h4>Instagram діалоги</h4>
+          <p>Останні повідомлення клієнтів</p>
+        </div>
+
+        <span
+          id="metaIgDirectConversationCount"
+          class="meta-direct-count"
+        >
+          0
+        </span>
+      </div>
+
+      <div
+        id="metaIgDirectConversations"
+        class="meta-direct-conversations"
+      >
+        <div class="meta-direct-empty">
+          Instagram діалогів поки немає.
+        </div>
+      </div>
+    </aside>
+
+    <section class="meta-direct-chat">
+
+      <header
+        id="metaIgDirectChatHeader"
+        class="meta-direct-chat__head"
+      >
+        <div class="meta-direct-chat__avatar">
+          🌈
+        </div>
+
+        <div class="meta-direct-chat__person">
+          <strong>Оберіть Instagram діалог</strong>
+          <small>Тут з’явиться клієнт</small>
+        </div>
+      </header>
+
+      <div
+        id="metaIgDirectMessages"
+        class="meta-direct-messages"
+      >
+        <div class="meta-direct-empty">
+          Оберіть клієнта зі списку Instagram діалогів.
+        </div>
+      </div>
+
+      <form
+        id="metaIgDirectComposer"
+        class="meta-direct-composer"
+      >
+        <textarea
+          id="metaIgDirectMessageInput"
+          class="meta-direct-input"
+          rows="1"
+          placeholder="Напишіть відповідь в Instagram..."
+          disabled
+        ></textarea>
+
+        <button
+          id="metaIgDirectSendBtn"
+          class="btn btn-primary meta-direct-send"
+          type="submit"
+          disabled
+        >
+          Надіслати ➤
+        </button>
+      </form>
     </section>
   </div>
 </section>

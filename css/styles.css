@@ -6626,3 +6626,135 @@ body.gws-lock .gws-hub *{
   min-height:42px;
   padding:8px 14px;
 }
+
+/* ===== Instagram Direct in Meta Hub ===== */
+
+.gws-tab--instagram-direct span{
+  background:
+    linear-gradient(135deg, #f58529, #dd2a7b, #8134af, #515bd4);
+}
+
+.gws-tab--instagram-direct.is-active{
+  border-color:rgba(221,42,123,.35);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(245,133,41,.12),
+      rgba(221,42,123,.12),
+      rgba(129,52,175,.12)
+    );
+}
+
+.meta-ig-direct .gws-panel__head{
+  background:
+    radial-gradient(circle at top left, rgba(245,133,41,.16), transparent 34%),
+    radial-gradient(circle at top right, rgba(129,52,175,.16), transparent 34%),
+    linear-gradient(135deg, #ffffff, #fff7fb);
+  border-radius:18px;
+  border:1px solid rgba(221,42,123,.12);
+}
+
+.meta-ig-direct .btn-primary{
+  background:
+    linear-gradient(135deg, #f58529, #dd2a7b, #8134af);
+  border-color:transparent;
+  color:#fff;
+  box-shadow:0 14px 30px rgba(221,42,123,.18);
+}
+
+.meta-ig-direct .meta-direct-count,
+.meta-ig-direct .meta-direct-unread{
+  background:
+    linear-gradient(135deg, #f58529, #dd2a7b, #8134af);
+  color:#fff;
+}
+
+.meta-ig-direct-avatar{
+  background:
+    linear-gradient(135deg, #f58529, #dd2a7b, #8134af, #515bd4) !important;
+  color:#fff !important;
+  font-weight:950;
+}
+
+.meta-ig-direct .meta-direct-conversation.is-active{
+  border-color:rgba(221,42,123,.35);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(245,133,41,.10),
+      rgba(221,42,123,.10),
+      rgba(129,52,175,.10)
+    );
+}
+
+.meta-ig-direct .meta-direct-message-row.is-out .meta-direct-bubble{
+  background:
+    linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+  color:#fff;
+  border-color:transparent;
+}
+
+.meta-ig-direct .meta-direct-message-row.is-out .meta-direct-bubble__meta{
+  color:rgba(255,255,255,.86);
+}
+
+.meta-ig-direct .meta-direct-input:focus{
+  border-color:rgba(221,42,123,.45);
+  box-shadow:0 0 0 4px rgba(221,42,123,.10);
+}
+
+/* ===== FIX Instagram Direct composer ===== */
+
+.meta-ig-direct .meta-direct-composer{
+  display:grid !important;
+  grid-template-columns:minmax(0, 1fr) auto !important;
+  align-items:center !important;
+  gap:8px !important;
+  padding:8px 12px !important;
+}
+
+#metaIgDirectMessageInput{
+  width:100% !important;
+  min-width:0 !important;
+  height:46px !important;
+  min-height:46px !important;
+  max-height:120px !important;
+  padding:12px 14px !important;
+  border-radius:16px !important;
+  resize:none !important;
+  overflow-y:auto !important;
+}
+
+#metaIgDirectSendBtn{
+  width:auto !important;
+  min-width:150px !important;
+  height:46px !important;
+  min-height:46px !important;
+  padding:10px 18px !important;
+  border-radius:16px !important;
+  white-space:nowrap !important;
+}
+
+.meta-ig-direct .meta-direct-chat__avatar,
+.meta-ig-direct .meta-direct-conversation__avatar{
+  overflow:hidden !important;
+}
+
+.meta-ig-direct .meta-direct-chat__avatar img,
+.meta-ig-direct .meta-direct-conversation__avatar img{
+  width:100% !important;
+  height:100% !important;
+  display:block !important;
+  object-fit:cover !important;
+  border-radius:inherit !important;
+}
+
+@media (max-width:700px){
+  .meta-ig-direct .meta-direct-composer{
+    grid-template-columns:1fr !important;
+  }
+
+  #metaIgDirectSendBtn{
+    width:100% !important;
+  }
+}
