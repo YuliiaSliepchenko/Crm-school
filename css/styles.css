@@ -6758,3 +6758,42 @@ body.gws-lock .gws-hub *{
     width:100% !important;
   }
 }
+
+.meta-ig-direct .meta-direct-composer{
+  display:grid !important;
+  grid-template-columns:
+    44px
+    minmax(0, 1fr)
+    auto !important;
+  align-items:end !important;
+  gap:8px !important;
+}
+
+.meta-ig-direct .meta-direct-upload-preview{
+  grid-column:1 / -1;
+}
+
+#metaIgDirectSendBtn{
+  min-width:140px !important;
+}
+
+.meta-direct-file-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.meta-direct-message-row.is-in .meta-direct-file-download {
+  background: #f3f6fb;
+  color: #1f2937;
+  border-color: #e5e7eb;
+}

@@ -10625,20 +10625,33 @@ function setMetaDirectImage(file) {
     return;
   }
 
-  const allowedTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/gif"
-  ];
+  const blockedExtensions = [
+  ".exe",
+  ".bat",
+  ".cmd",
+  ".msi",
+  ".sh",
+  ".php",
+  ".js"
+];
 
-  if (!allowedTypes.includes(file.type)) {
-    setMetaDirectStatus(
-      "Підтримуються тільки JPG, PNG та GIF.",
-      "error"
-    );
+const fileName = String(file.name || "").toLowerCase();
 
-    return;
-  }
+if (blockedExtensions.some(ext => fileName.endsWith(ext))) {
+  setMetaDirectStatus(
+    "Цей тип файлу заблоковано з міркувань безпеки.",
+    "error"
+  );
+  return;
+}
+
+if (file.size > 25 * 1024 * 1024) {
+  setMetaDirectStatus(
+    "Файл завеликий. Максимум — 25 МБ.",
+    "error"
+  );
+  return;
+}
 
   if (file.size > 8 * 1024 * 1024) {
     setMetaDirectStatus(
@@ -11688,7 +11701,7 @@ async function sendMetaDirectMessage(
       );
 
       imageForm.append(
-        "image",
+        "file",
         pendingImage,
         pendingImage.name ||
           "clipboard-image.png"
@@ -11696,7 +11709,7 @@ async function sendMetaDirectMessage(
 
       await metaDirectRequest(
         `${META_BACKEND_URL}` +
-        `/api/meta/direct/send-image`,
+        `/api/meta/direct/send-file`,
         {
           method: "POST",
           body: imageForm
@@ -12077,6 +12090,24 @@ const metaIgDirectMessageInput =
 const metaIgDirectSendBtn =
   document.getElementById("metaIgDirectSendBtn");
 
+const metaIgDirectAttachBtn =
+  document.getElementById("metaIgDirectAttachBtn");
+
+const metaIgDirectImageInput =
+  document.getElementById("metaIgDirectImageInput");
+
+const metaIgDirectImagePreview =
+  document.getElementById("metaIgDirectImagePreview");
+
+const metaIgDirectImagePreviewImg =
+  document.getElementById("metaIgDirectImagePreviewImg");
+
+const metaIgDirectImagePreviewName =
+  document.getElementById("metaIgDirectImagePreviewName");
+
+const metaIgDirectImageRemoveBtn =
+  document.getElementById("metaIgDirectImageRemoveBtn");
+
 const metaIgDirectState = {
   initialized: false,
   accounts: [],
@@ -12084,7 +12115,9 @@ const metaIgDirectState = {
   messages: [],
   activeConversation: null,
   loading: false,
-  sending: false
+  sending: false,
+  pendingImage: null,
+  pendingImageUrl: null
 };
 
 function metaIgDirectEscape(value) {
@@ -12152,6 +12185,92 @@ function metaIgDirectSetStatus(text, type = "info") {
   if (type === "error") {
     metaIgDirectStatus.classList.add("is-error");
   }
+}
+
+function clearMetaIgDirectImage() {
+  if (metaIgDirectState.pendingImageUrl) {
+    URL.revokeObjectURL(
+      metaIgDirectState.pendingImageUrl
+    );
+  }
+
+  metaIgDirectState.pendingImage = null;
+  metaIgDirectState.pendingImageUrl = null;
+
+  if (metaIgDirectImageInput) {
+    metaIgDirectImageInput.value = "";
+  }
+
+  if (metaIgDirectImagePreview) {
+    metaIgDirectImagePreview.hidden = true;
+  }
+
+  if (metaIgDirectImagePreviewImg) {
+    metaIgDirectImagePreviewImg.removeAttribute("src");
+  }
+
+  if (metaIgDirectImagePreviewName) {
+    metaIgDirectImagePreviewName.textContent = "Фото";
+  }
+}
+
+function setMetaIgDirectImage(file) {
+  if (!file) {
+    return;
+  }
+
+  const blockedExtensions = [
+  ".exe",
+  ".bat",
+  ".cmd",
+  ".msi",
+  ".sh",
+  ".php",
+  ".js"
+];
+
+const fileName = String(file.name || "").toLowerCase();
+
+if (blockedExtensions.some(ext => fileName.endsWith(ext))) {
+  setMetaDirectStatus(
+    "Цей тип файлу заблоковано з міркувань безпеки.",
+    "error"
+  );
+  return;
+}
+
+if (file.size > 25 * 1024 * 1024) {
+  setMetaDirectStatus(
+    "Файл завеликий. Максимум — 25 МБ.",
+    "error"
+  );
+  return;
+}
+
+  clearMetaIgDirectImage();
+
+  metaIgDirectState.pendingImage = file;
+  metaIgDirectState.pendingImageUrl =
+    URL.createObjectURL(file);
+
+  if (metaIgDirectImagePreviewImg) {
+    metaIgDirectImagePreviewImg.src =
+      metaIgDirectState.pendingImageUrl;
+  }
+
+  if (metaIgDirectImagePreviewName) {
+    metaIgDirectImagePreviewName.textContent =
+      file.name || "Зображення";
+  }
+
+  if (metaIgDirectImagePreview) {
+    metaIgDirectImagePreview.hidden = false;
+  }
+
+  metaIgDirectSetStatus(
+    "Фото готове до надсилання.",
+    "success"
+  );
 }
 
 async function metaIgDirectRequest(url, options = {}) {
@@ -12339,6 +12458,21 @@ function renderMetaIgDirectConversations() {
       .join("");
 }
 
+function renderDownloadButton(message) {
+  if (!message.attachment_url) return "";
+
+  return `
+    <a
+      class="meta-direct-file-download"
+      href="${message.attachment_url}?download=1"
+      target="_blank"
+      download
+    >
+      ⬇️ Скачати файл
+    </a>
+  `;
+}
+
 function renderMetaIgDirectHeader() {
   if (!metaIgDirectChatHeader) return;
 
@@ -12417,9 +12551,29 @@ function renderMetaIgDirectMessages() {
         return `
           <div class="meta-direct-message-row ${outgoing ? "is-out" : "is-in"}">
             <div class="meta-direct-bubble">
-              <div class="meta-direct-bubble__text">
-                ${metaIgDirectEscape(message.text || "")}
-              </div>
+              ${
+  metaIgDirectSafeUrl(message.attachment_url)
+    ? `
+      <div class="meta-direct-attachment">
+        <img
+          src="${metaIgDirectEscape(metaIgDirectSafeUrl(message.attachment_url))}"
+          alt=""
+          loading="lazy"
+        >
+      </div>
+    `
+    : ""
+}
+
+${
+  message.text
+    ? `
+      <div class="meta-direct-bubble__text">
+        ${metaIgDirectEscape(message.text || "")}
+      </div>
+    `
+    : ""
+}
 
               <div class="meta-direct-bubble__meta">
                 <span>${metaIgDirectEscape(metaIgDirectTime(message.timestamp))}</span>
@@ -12610,7 +12764,10 @@ async function sendMetaIgDirectMessage(event) {
   const message =
     metaIgDirectMessageInput?.value.trim() || "";
 
-  if (!message) {
+  const pendingImage =
+    metaIgDirectState.pendingImage;
+
+  if (!message && !pendingImage) {
     metaIgDirectMessageInput?.focus();
     return;
   }
@@ -12630,19 +12787,58 @@ async function sendMetaIgDirectMessage(event) {
   }
 
   try {
-    await metaIgDirectRequest(
-      `${META_BACKEND_URL}/api/meta/instagram/direct/send`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          instagram_id: instagramId,
-          participant_id: String(participantId),
-          message
-        })
-      }
-    );
+    /*
+      1. Спочатку надсилаємо фото, якщо воно вибране
+      або вставлене через Ctrl+V
+    */
+    if (pendingImage) {
+      const formData = new FormData();
 
-    metaIgDirectMessageInput.value = "";
+      formData.append(
+        "instagram_id",
+        instagramId
+      );
+
+      formData.append(
+        "participant_id",
+        String(participantId)
+      );
+
+      formData.append(
+        "file",
+        pendingImage,
+        pendingImage.name || "file"
+      );
+
+      await metaIgDirectRequest(
+        `${META_BACKEND_URL}/api/meta/instagram/direct/send-file`,
+        {
+          method: "POST",
+          body: formData
+        }
+      );
+
+      clearMetaIgDirectImage();
+    }
+
+    /*
+      2. Потім надсилаємо текст, якщо текст є
+    */
+    if (message) {
+      await metaIgDirectRequest(
+        `${META_BACKEND_URL}/api/meta/instagram/direct/send`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            instagram_id: instagramId,
+            participant_id: String(participantId),
+            message
+          })
+        }
+      );
+
+      metaIgDirectMessageInput.value = "";
+    }
 
     metaIgDirectSetStatus(
       "Instagram Direct повідомлення надіслано.",
@@ -12749,5 +12945,76 @@ metaIgDirectMessageInput?.addEventListener("keydown", event => {
     sendMetaIgDirectMessage(event);
   }
 });
+
+metaIgDirectAttachBtn?.addEventListener(
+  "click",
+  () => {
+    metaIgDirectImageInput?.click();
+  }
+);
+
+metaIgDirectImageInput?.addEventListener(
+  "change",
+  () => {
+    const file =
+      metaIgDirectImageInput.files?.[0];
+
+    if (file) {
+      setMetaIgDirectImage(file);
+    }
+  }
+);
+
+metaIgDirectImageRemoveBtn?.addEventListener(
+  "click",
+  clearMetaIgDirectImage
+);
+
+metaIgDirectMessageInput?.addEventListener(
+  "paste",
+  event => {
+    const items = Array.from(
+      event.clipboardData?.items || []
+    );
+
+    const imageItem = items.find(
+      item =>
+        String(item.type || "")
+          .startsWith("image/")
+    );
+
+    if (!imageItem) {
+      return;
+    }
+
+    const file =
+      imageItem.getAsFile();
+
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const extension =
+      file.type === "image/jpeg"
+        ? "jpg"
+        : file.type === "image/gif"
+          ? "gif"
+          : "png";
+
+    const renamedFile = new File(
+      [file],
+      `instagram-clipboard-${Date.now()}.${extension}`,
+      {
+        type: file.type
+      }
+    );
+
+    setMetaIgDirectImage(
+      renamedFile
+    );
+  }
+);
 
 })();

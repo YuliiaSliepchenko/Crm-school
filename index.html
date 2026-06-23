@@ -1366,7 +1366,6 @@
   <input
     id="metaDirectImageInput"
     type="file"
-    accept="image/jpeg,image/png,image/gif"
     hidden
   >
 
@@ -1496,6 +1495,49 @@
         id="metaIgDirectComposer"
         class="meta-direct-composer"
       >
+      <input
+  id="metaIgDirectImageInput"
+  type="file"
+  hidden
+>
+
+<button
+  id="metaIgDirectAttachBtn"
+  class="meta-direct-attach-btn"
+  type="button"
+  title="Додати фото"
+>
+  📎
+</button>
+
+<div
+  id="metaIgDirectImagePreview"
+  class="meta-direct-upload-preview"
+  hidden
+>
+  <img
+    id="metaIgDirectImagePreviewImg"
+    alt=""
+  >
+
+  <div class="meta-direct-upload-preview__info">
+    <strong id="metaIgDirectImagePreviewName">
+      Фото
+    </strong>
+    <small>
+      Буде надіслано в Instagram Direct
+    </small>
+  </div>
+
+  <button
+    id="metaIgDirectImageRemoveBtn"
+    class="meta-direct-upload-remove"
+    type="button"
+    title="Прибрати фото"
+  >
+    ×
+  </button>
+</div>
         <textarea
           id="metaIgDirectMessageInput"
           class="meta-direct-input"
