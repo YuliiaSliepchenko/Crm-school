@@ -11085,6 +11085,388 @@ function renderMetaDirectHeader() {
 }
 
 
+const META_DIRECT_REACTIONS = [
+  "👍",
+  "❤️",
+  "😂",
+  "😮",
+  "😢",
+  "😡"
+];
+
+function metaDirectReactionAttr(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function getMetaDirectManagerReaction(message) {
+  const reactions = Array.isArray(message?.reactions)
+    ? message.reactions
+    : [];
+
+  const managerReaction = reactions.find(
+    item => String(item?.reacted_by || "") === "manager"
+  );
+
+  return String(managerReaction?.reaction || "");
+}
+
+function renderMetaDirectReactionBlock({
+  message,
+  platform,
+  pageId,
+  participantId
+}) {
+  const mid = String(message?.mid || "").trim();
+
+  if (!mid) {
+    return "";
+  }
+
+  const activeReaction =
+    getMetaDirectManagerReaction(message);
+
+  const buttons = META_DIRECT_REACTIONS
+    .map(reaction => {
+      const active =
+        reaction === activeReaction;
+
+      return `
+        <button
+          class="meta-direct-reaction-btn ${active ? "is-active" : ""}"
+          type="button"
+          data-mid="${metaDirectReactionAttr(mid)}"
+          data-platform="${metaDirectReactionAttr(platform)}"
+          data-page-id="${metaDirectReactionAttr(pageId)}"
+          data-participant-id="${metaDirectReactionAttr(participantId)}"
+          data-reaction="${metaDirectReactionAttr(reaction)}"
+          title="Поставити реакцію ${metaDirectReactionAttr(reaction)}"
+        >
+          ${reaction}
+        </button>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="meta-direct-reactions">
+      ${
+        activeReaction
+          ? `
+            <span class="meta-direct-reaction-current">
+              ${activeReaction}
+            </span>
+          `
+          : ""
+      }
+
+      <div class="meta-direct-reaction-picker">
+        ${buttons}
+      </div>
+    </div>
+  `;
+}
+
+async function saveMetaDirectReactionFromButton(button) {
+  const mid =
+    button.dataset.mid || "";
+
+  const platform =
+    button.dataset.platform || "";
+
+  const pageId =
+    button.dataset.pageId || "";
+
+  const participantId =
+    button.dataset.participantId || "";
+
+  const reaction =
+    button.dataset.reaction || "";
+
+  if (
+    !mid ||
+    !platform ||
+    !pageId ||
+    !participantId ||
+    !reaction
+  ) {
+    return;
+  }
+
+  button.disabled = true;
+
+  try {
+    await metaDirectRequest(
+      `${META_BACKEND_URL}/api/meta/direct/reaction`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          mid,
+          platform,
+          page_id: pageId,
+          participant_id: participantId,
+          reaction
+        })
+      }
+    );
+
+    if (platform === "instagram") {
+      const message = metaIgDirectState.messages.find(
+        item => String(item.mid || "") === mid
+      );
+
+      if (message) {
+        message.reactions = [
+          {
+            reaction,
+            reacted_by: "manager",
+            created_at: Date.now()
+          }
+        ];
+      }
+
+      renderMetaIgDirectMessages();
+      return;
+    }
+
+    const message = metaDirectState.messages.find(
+      item => String(item.mid || "") === mid
+    );
+
+    if (message) {
+      message.reactions = [
+        {
+          reaction,
+          reacted_by: "manager",
+          created_at: Date.now()
+        }
+      ];
+    }
+
+    renderMetaDirectMessages({
+      scrollToBottom: false
+    });
+
+  } catch (error) {
+    console.error(
+      "Meta reaction error:",
+      error
+    );
+
+    if (platform === "instagram") {
+      metaIgDirectSetStatus(
+        error.message || "Не вдалося зберегти реакцію.",
+        "error"
+      );
+    } else {
+      setMetaDirectStatus(
+        error.message || "Не вдалося зберегти реакцію.",
+        "error"
+      );
+    }
+
+  } finally {
+    button.disabled = false;
+  }
+}
+
+document.addEventListener(
+  "click",
+  event => {
+    const button = event.target.closest(
+      ".meta-direct-reaction-btn"
+    );
+
+    if (!button) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    saveMetaDirectReactionFromButton(button);
+  }
+);
+
+function metaDirectActionAttr(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function metaDirectActionQuote(message) {
+  const text =
+    String(message?.text || "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  if (text) {
+    return text.length > 120
+      ? `${text.slice(0, 120)}...`
+      : text;
+  }
+
+  const type =
+    String(message?.message_type || "")
+      .toLowerCase();
+
+  if (type === "image") {
+    return "фото";
+  }
+
+  if (message?.attachment_url) {
+    return "файл / вкладення";
+  }
+
+  return "повідомлення";
+}
+
+function renderMetaDirectVisibleActions({
+  message,
+  platform
+}) {
+  const quote =
+    metaDirectActionQuote(message);
+
+  return `
+    <div class="meta-direct-visible-actions">
+      <button
+        class="meta-direct-visible-action-btn"
+        type="button"
+        data-platform="${metaDirectActionAttr(platform)}"
+        data-action="reply"
+        data-quote="${metaDirectActionAttr(quote)}"
+        title="Відповісти на це повідомлення"
+      >
+        ↩ Відповісти
+      </button>
+
+      <button
+        class="meta-direct-visible-action-btn"
+        type="button"
+        data-platform="${metaDirectActionAttr(platform)}"
+        data-action="clarify"
+        data-quote="${metaDirectActionAttr(quote)}"
+        title="Уточнити це повідомлення"
+      >
+        ✏️ Уточнити
+      </button>
+
+      <button
+        class="meta-direct-visible-action-btn is-danger"
+        type="button"
+        data-platform="${metaDirectActionAttr(platform)}"
+        data-action="cancel"
+        data-quote="${metaDirectActionAttr(quote)}"
+        title="Скасувати попереднє повідомлення"
+      >
+        🚫 Скасувати
+      </button>
+    </div>
+  `;
+}
+
+function applyMetaDirectVisibleAction(button) {
+  const platform =
+    button.dataset.platform || "";
+
+  const action =
+    button.dataset.action || "";
+
+  const quote =
+    button.dataset.quote || "повідомлення";
+
+  const input =
+    platform === "instagram"
+      ? metaIgDirectMessageInput
+      : metaDirectMessageInput;
+
+  if (!input) {
+    return;
+  }
+
+  let prefix = "";
+
+  if (action === "reply") {
+    prefix =
+      `↩ Відповідь на:\n“${quote}”\n\n`;
+  }
+
+  if (action === "clarify") {
+    prefix =
+      `✏️ Уточнення до повідомлення:\n“${quote}”\n\n`;
+  }
+
+  if (action === "cancel") {
+    prefix =
+      `🚫 Не враховуйте попереднє повідомлення:\n“${quote}”`;
+  }
+
+  if (!prefix) {
+    return;
+  }
+
+  const currentText =
+    input.value.trim();
+
+  input.value =
+    currentText
+      ? `${prefix}${currentText}`
+      : prefix;
+
+  input.focus();
+
+  try {
+    input.setSelectionRange(
+      input.value.length,
+      input.value.length
+    );
+  } catch (error) {}
+
+  if (platform === "instagram") {
+    metaIgDirectSetStatus(
+      "Текст підготовлено. Натисніть «Надіслати», щоб клієнт це побачив.",
+      "success"
+    );
+  } else {
+    setMetaDirectStatus(
+      "Текст підготовлено. Натисніть «Надіслати», щоб клієнт це побачив.",
+      "success"
+    );
+
+    if (typeof resizeMetaDirectInput === "function") {
+      resizeMetaDirectInput();
+    }
+  }
+}
+
+document.addEventListener(
+  "click",
+  event => {
+    const button = event.target.closest(
+      ".meta-direct-visible-action-btn"
+    );
+
+    if (!button) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    applyMetaDirectVisibleAction(button);
+  }
+);
+
+
 function renderMetaDirectAttachment(message) {
   const url =
     metaDirectSafeUrl(
@@ -11205,6 +11587,19 @@ function renderMetaDirectMessages({
               `
               : ""
           }
+
+          ${renderMetaDirectReactionBlock({
+            message,
+            platform: "facebook",
+            pageId: metaDirectPageSelect?.value || "",
+            participantId:
+              metaDirectState.activeConversation?.participant_id || ""
+          })}
+
+          ${renderMetaDirectVisibleActions({
+            message,
+            platform: "facebook"
+          })}
 
           <div
             class="meta-direct-bubble__meta"
@@ -12663,6 +13058,19 @@ function renderMetaIgDirectMessages() {
                   `
                   : ""
               }
+
+              ${renderMetaDirectReactionBlock({
+                message,
+                platform: "instagram",
+                pageId: metaIgDirectAccountSelect?.value || "",
+                participantId:
+                  metaIgDirectState.activeConversation?.participant_id || ""
+              })}
+
+              ${renderMetaDirectVisibleActions({
+                message,
+                platform: "instagram"
+              })}
 
               <div class="meta-direct-bubble__meta">
                 <span>${metaIgDirectEscape(metaIgDirectTime(message.timestamp))}</span>
