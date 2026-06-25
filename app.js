@@ -10565,14 +10565,28 @@ const response = await fetch(url, {
   }
 
   if (
-    !response.ok ||
-    data.success === false
-  ) {
-    throw new Error(
-      data.error ||
-      `Помилка сервера: ${response.status}`
-    );
-  }
+  !response.ok ||
+  data.success === false
+) {
+  const metaError =
+    (
+      typeof data?.error === "string"
+        ? data.error
+        : data?.error?.message
+    ) ||
+    data?.details?.error?.message ||
+    (
+      typeof data?.details?.error === "string"
+        ? data.details.error
+        : ""
+    ) ||
+    data?.details?.message ||
+    data?.details?.raw ||
+    data?.warning ||
+    `Помилка сервера: ${response.status}`;
+
+  throw new Error(metaError);
+}
 
   return data;
 }
@@ -12105,6 +12119,9 @@ const metaIgDirectImagePreviewImg =
 const metaIgDirectImagePreviewName =
   document.getElementById("metaIgDirectImagePreviewName");
 
+const metaIgDirectImagePreviewSize =
+  document.getElementById("metaIgDirectImagePreviewSize");
+
 const metaIgDirectImageRemoveBtn =
   document.getElementById("metaIgDirectImageRemoveBtn");
 
@@ -12220,32 +12237,32 @@ function setMetaIgDirectImage(file) {
   }
 
   const blockedExtensions = [
-  ".exe",
-  ".bat",
-  ".cmd",
-  ".msi",
-  ".sh",
-  ".php",
-  ".js"
-];
+    ".exe",
+    ".bat",
+    ".cmd",
+    ".msi",
+    ".sh",
+    ".php",
+    ".js"
+  ];
 
-const fileName = String(file.name || "").toLowerCase();
+  const fileName = String(file.name || "").toLowerCase();
 
-if (blockedExtensions.some(ext => fileName.endsWith(ext))) {
-  setMetaDirectStatus(
-    "Цей тип файлу заблоковано з міркувань безпеки.",
-    "error"
-  );
-  return;
-}
+  if (blockedExtensions.some(ext => fileName.endsWith(ext))) {
+    metaIgDirectSetStatus(
+      "Цей тип файлу заблоковано з міркувань безпеки.",
+      "error"
+    );
+    return;
+  }
 
-if (file.size > 25 * 1024 * 1024) {
-  setMetaDirectStatus(
-    "Файл завеликий. Максимум — 25 МБ.",
-    "error"
-  );
-  return;
-}
+  if (file.size > 25 * 1024 * 1024) {
+    metaIgDirectSetStatus(
+      "Файл завеликий. Максимум — 25 МБ.",
+      "error"
+    );
+    return;
+  }
 
   clearMetaIgDirectImage();
 
@@ -12253,14 +12270,28 @@ if (file.size > 25 * 1024 * 1024) {
   metaIgDirectState.pendingImageUrl =
     URL.createObjectURL(file);
 
+  const isImage = String(file.type || "").startsWith("image/");
+
   if (metaIgDirectImagePreviewImg) {
-    metaIgDirectImagePreviewImg.src =
-      metaIgDirectState.pendingImageUrl;
+    if (isImage) {
+      metaIgDirectImagePreviewImg.src =
+        metaIgDirectState.pendingImageUrl;
+
+      metaIgDirectImagePreviewImg.style.display = "";
+    } else {
+      metaIgDirectImagePreviewImg.removeAttribute("src");
+      metaIgDirectImagePreviewImg.style.display = "none";
+    }
   }
 
   if (metaIgDirectImagePreviewName) {
     metaIgDirectImagePreviewName.textContent =
-      file.name || "Зображення";
+      file.name || "Файл";
+  }
+
+  if (metaIgDirectImagePreviewSize) {
+    metaIgDirectImagePreviewSize.textContent =
+      `${Math.round(file.size / 1024)} КБ • готове до надсилання`;
   }
 
   if (metaIgDirectImagePreview) {
@@ -12268,7 +12299,9 @@ if (file.size > 25 * 1024 * 1024) {
   }
 
   metaIgDirectSetStatus(
-    "Фото готове до надсилання.",
+    isImage
+      ? "Фото готове до надсилання."
+      : "Файл готовий до надсилання.",
     "success"
   );
 }
@@ -12548,32 +12581,88 @@ function renderMetaIgDirectMessages() {
             ? "✓✓"
             : "✓";
 
+        const attachmentUrl =
+          metaIgDirectSafeUrl(message.attachment_url);
+
+        const messageType =
+          String(message.message_type || "text").toLowerCase();
+
+        const hasAttachment =
+          Boolean(attachmentUrl);
+
+        const isImageAttachment =
+          hasAttachment &&
+          (
+            messageType === "image" ||
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(attachmentUrl)
+          );
+
+        const downloadUrl =
+          attachmentUrl
+            ? (
+                attachmentUrl.includes("?")
+                  ? `${attachmentUrl}&download=1`
+                  : `${attachmentUrl}?download=1`
+              )
+            : "";
+
+        const cleanText =
+          String(message.text || "").trim();
+
+        const fileName =
+          cleanText.replace(/^📎\s*/, "") || "Файл";
+
+        const showText =
+          cleanText &&
+          !(
+            hasAttachment &&
+            !isImageAttachment &&
+            cleanText.startsWith("📎")
+          );
+
         return `
           <div class="meta-direct-message-row ${outgoing ? "is-out" : "is-in"}">
             <div class="meta-direct-bubble">
-              ${
-  metaIgDirectSafeUrl(message.attachment_url)
-    ? `
-      <div class="meta-direct-attachment">
-        <img
-          src="${metaIgDirectEscape(metaIgDirectSafeUrl(message.attachment_url))}"
-          alt=""
-          loading="lazy"
-        >
-      </div>
-    `
-    : ""
-}
 
-${
-  message.text
-    ? `
-      <div class="meta-direct-bubble__text">
-        ${metaIgDirectEscape(message.text || "")}
-      </div>
-    `
-    : ""
-}
+              ${
+                hasAttachment && isImageAttachment
+                  ? `
+                    <div class="meta-direct-attachment">
+                      <img
+                        src="${metaIgDirectEscape(attachmentUrl)}"
+                        alt="Фото"
+                        loading="lazy"
+                      >
+                    </div>
+                  `
+                  : ""
+              }
+
+              ${
+                hasAttachment && !isImageAttachment
+                  ? `
+                    <a
+                      class="meta-direct-file-download"
+                      href="${metaIgDirectEscape(downloadUrl)}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                    >
+                      📎 ${metaIgDirectEscape(fileName)}
+                    </a>
+                  `
+                  : ""
+              }
+
+              ${
+                showText
+                  ? `
+                    <div class="meta-direct-bubble__text">
+                      ${metaIgDirectEscape(cleanText)}
+                    </div>
+                  `
+                  : ""
+              }
 
               <div class="meta-direct-bubble__meta">
                 <span>${metaIgDirectEscape(metaIgDirectTime(message.timestamp))}</span>
